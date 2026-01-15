@@ -21,11 +21,20 @@
 name: Test Suite
 
 # Trigger on push to main and all pull requests
+# Skip CI for docs-only changes
 on:
   push:
     branches: [main, master]
+    paths-ignore:
+      - "*.md"
+      - ".gitignore"
+      - "LICENSE"
   pull_request:
     branches: [main, master]
+    paths-ignore:
+      - "*.md"
+      - ".gitignore"
+      - "LICENSE"
 
 # Environment variables available to all jobs
 env:
