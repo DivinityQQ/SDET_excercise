@@ -1,0 +1,19 @@
+# Flask and extensions
+flask>=3.0.0
+flask-sqlalchemy>=3.1.1
+python-dotenv>=1.0.0
+
+# Testing - API
+pytest>=8.0.0
+pytest-html>=4.1.1
+requests>=2.31.0
+
+# Testing - UI (Playwright)
+playwright>=1.49.0
+pytest-playwright>=0.5.0
+
+# Code quality
+ruff>=0.1.14
+
+# Utilities
+faker>=22.0.0

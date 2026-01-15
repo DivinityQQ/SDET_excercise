@@ -1,0 +1,94 @@
+"""
+Database models for the Task Manager application.
+
+This module defines SQLAlchemy models representing the data structure
+of the application. Each model maps to a database table.
+"""
+
+from datetime import datetime
+from enum import Enum
+from typing import Any
+
+from app import db
+
+
+class TaskStatus(str, Enum):
+    """Enumeration of possible task statuses."""
+
+    PENDING = "pending"
+    IN_PROGRESS = "in_progress"
+    COMPLETED = "completed"
+
+
+class TaskPriority(str, Enum):
+    """Enumeration of possible task priorities."""
+
+    LOW = "low"
+    MEDIUM = "medium"
+    HIGH = "high"
+
+
+class Task(db.Model):
+    """
+    Task model representing a to-do item.
+
+    Attributes:
+        id: Unique identifier for the task.
+        title: Short title describing the task.
+        description: Detailed description of the task.
+        status: Current status (pending, in_progress, completed).
+        priority: Task priority level (low, medium, high).
+        due_date: Optional deadline for the task.
+        created_at: Timestamp when the task was created.
+        updated_at: Timestamp when the task was last modified.
+    """
+
+    __tablename__ = "tasks"
+
+    id: int = db.Column(db.Integer, primary_key=True)
+    title: str = db.Column(db.String(200), nullable=False)
+    description: str = db.Column(db.Text, nullable=True)
+    status: str = db.Column(
+        db.String(20),
+        nullable=False,
+        default=TaskStatus.PENDING.value
+    )
+    priority: str = db.Column(
+        db.String(20),
+        nullable=False,
+        default=TaskPriority.MEDIUM.value
+    )
+    due_date: datetime | None = db.Column(db.DateTime, nullable=True)
+    created_at: datetime = db.Column(
+        db.DateTime,
+        nullable=False,
+        default=datetime.utcnow
+    )
+    updated_at: datetime = db.Column(
+        db.DateTime,
+        nullable=False,
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow
+    )
+
+    def to_dict(self) -> dict[str, Any]:
+        """
+        Convert the task to a dictionary representation.
+
+        Returns:
+            Dictionary containing all task fields.
+        """
+        return {
+            "id": self.id,
+            "title": self.title,
+            "description": self.description,
+            "status": self.status,
+            "priority": self.priority,
+            "due_date": self.due_date.isoformat() if self.due_date else None,
+            "created_at": self.created_at.isoformat(),
+            "updated_at": self.updated_at.isoformat(),
+        }
+
+    def __repr__(self) -> str:
+        """Return string representation of the task."""
+        return f"<Task {self.id}: {self.title}>"
