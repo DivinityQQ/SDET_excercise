@@ -8,8 +8,8 @@ locators and interactions. The POM pattern provides:
 - Maintainable test code (changes to UI only require updates in one place)
 """
 
-from tests.ui.pages.base_page import BasePage
-from tests.ui.pages.task_list_page import TaskListPage
-from tests.ui.pages.task_form_page import TaskFormPage
+from tests.e2e.pages.base_page import BasePage
+from tests.e2e.pages.task_list_page import TaskListPage
+from tests.e2e.pages.task_form_page import TaskFormPage
 
 __all__ = ["BasePage", "TaskListPage", "TaskFormPage"]

@@ -19,6 +19,8 @@ import pytest
 import json
 from app.models import TaskStatus, TaskPriority
 
+pytestmark = pytest.mark.integration
+
 
 class TestGetTasks:
     """Tests for GET /api/tasks endpoint."""

@@ -1,0 +1,30 @@
+services:
+  dev:
+    build: .
+    ports:
+      - "5001:5000"
+    environment:
+      - FLASK_ENV=development
+      - ENVIRONMENT=dev
+      - APP_VERSION=dev
+    container_name: taskapp-dev
+
+  staging:
+    build: .
+    ports:
+      - "5002:5000"
+    environment:
+      - FLASK_ENV=production
+      - ENVIRONMENT=staging
+      - APP_VERSION=staging
+    container_name: taskapp-staging
+
+  prod:
+    build: .
+    ports:
+      - "5003:5000"
+    environment:
+      - FLASK_ENV=production
+      - ENVIRONMENT=prod
+      - APP_VERSION=prod
+    container_name: taskapp-prod

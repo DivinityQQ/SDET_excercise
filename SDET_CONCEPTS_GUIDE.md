@@ -43,8 +43,8 @@ Think of it like this: If developers build the car, SDETs build the machines tha
 
 **In this repo:**
 - **Unit/Mock tests** (`tests/mocks/`) - Test individual components in isolation
-- **API tests** (`tests/api/`) - Test the REST API endpoints
-- **UI/E2E tests** (`tests/ui/`) - Test the full user interface
+- **API tests** (`tests/integration/`) - Test the REST API endpoints
+- **UI/E2E tests** (`tests/e2e/`) - Test the full user interface
 
 **Why it matters:** You want mostly fast unit tests, fewer API tests, and only critical UI tests. This keeps testing fast and reliable.
 
@@ -81,7 +81,7 @@ def db_session(app):
 
 **What it is:** A way to structure your tests with three clear sections.
 
-**Example from this repo** (`tests/api/test_tasks_crud.py`):
+**Example from this repo** (`tests/integration/test_tasks_crud.py`):
 ```python
 def test_create_task_with_valid_data(self, client, db_session, valid_task_data, api_headers):
     # ARRANGE: Prepare the data
@@ -105,7 +105,7 @@ def test_create_task_with_valid_data(self, client, db_session, valid_task_data, 
 
 **Simple analogy:** Like having a remote control for each device instead of pressing buttons directly on everything.
 
-**In this repo** (`tests/ui/pages/`):
+**In this repo** (`tests/e2e/pages/`):
 ```python
 class TaskListPage(BasePage):
     """Represents the task list page"""
@@ -129,7 +129,7 @@ class TaskListPage(BasePage):
 
 **What it is:** Running the same test with different inputs automatically.
 
-**In this repo** (`tests/api/test_validation.py`):
+**In this repo** (`tests/integration/test_validation.py`):
 ```python
 @pytest.mark.parametrize("invalid_status", ["invalid", "PENDING", "Done", "123", ""])
 def test_create_task_with_invalid_status(self, client, invalid_status):
@@ -219,7 +219,7 @@ pytest -m "ui"         # Only UI tests
 
 **What it is:** Testing the limits and edges of acceptable inputs.
 
-**In this repo** (`tests/api/test_validation.py`):
+**In this repo** (`tests/integration/test_validation.py`):
 ```python
 def test_create_task_title_max_length(self, client):
     """Test maximum allowed title length (200 characters)"""
@@ -242,7 +242,7 @@ def test_create_task_title_exceeds_max_length(self, client):
 
 **What it is:** Testing what happens when things go wrong.
 
-**In this repo** (`tests/api/test_validation.py`):
+**In this repo** (`tests/integration/test_validation.py`):
 ```python
 def test_create_task_missing_required_fields(self, client):
     """What if we don't send a title?"""

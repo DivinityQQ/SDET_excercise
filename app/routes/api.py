@@ -5,6 +5,7 @@ This module provides CRUD operations for tasks via HTTP methods.
 All endpoints return JSON responses and follow REST conventions.
 
 Endpoints:
+    GET    /api/health        - Health check
     GET    /api/tasks          - List all tasks (with optional filtering)
     GET    /api/tasks/<id>     - Get a single task by ID
     POST   /api/tasks          - Create a new task
@@ -14,6 +15,7 @@ Endpoints:
 """
 
 import logging
+import os
 from datetime import datetime, timezone
 from flask import Blueprint, jsonify, request, Response
 from sqlalchemy import select
@@ -101,6 +103,16 @@ def parse_due_date(date_string: str | None) -> datetime | None:
 # -----------------------------------------------------------------------------
 # API Endpoints
 # -----------------------------------------------------------------------------
+
+@api_bp.route("/health", methods=["GET"])
+def health_check() -> tuple[Response, int]:
+    """Health check endpoint for deployment verification."""
+    return jsonify({
+        "status": "healthy",
+        "environment": os.getenv("ENVIRONMENT", "unknown"),
+        "version": os.getenv("APP_VERSION", "unknown")
+    }), 200
+
 
 @api_bp.route("/tasks", methods=["GET"])
 def get_tasks() -> tuple[Response, int]:

@@ -12,7 +12,7 @@ Key Concepts Demonstrated:
 """
 
 from playwright.sync_api import Page, Locator, expect
-from tests.ui.pages.base_page import BasePage
+from tests.e2e.pages.base_page import BasePage
 
 
 class TaskFormPage(BasePage):

@@ -16,6 +16,8 @@ import pytest
 import json
 from datetime import datetime, timedelta, timezone
 
+pytestmark = pytest.mark.integration
+
 
 class TestTitleValidation:
     """Tests for task title field validation."""

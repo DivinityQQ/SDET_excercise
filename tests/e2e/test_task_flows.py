@@ -14,6 +14,8 @@ Key SDET Concepts Demonstrated:
 import pytest
 from playwright.sync_api import expect
 
+pytestmark = pytest.mark.e2e
+
 
 @pytest.mark.ui
 class TestTaskCreationFlow:

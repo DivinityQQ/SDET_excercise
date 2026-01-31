@@ -23,8 +23,8 @@ from sqlalchemy import delete
 os.environ["FLASK_ENV"] = "testing"
 
 from app import create_app, db
-from tests.ui.pages.task_list_page import TaskListPage
-from tests.ui.pages.task_form_page import TaskFormPage
+from tests.e2e.pages.task_list_page import TaskListPage
+from tests.e2e.pages.task_form_page import TaskFormPage
 
 
 # -----------------------------------------------------------------------------
@@ -49,6 +49,11 @@ def live_server(app):
     Yields:
         str: Base URL of the running server.
     """
+    base_url = os.getenv("TEST_BASE_URL")
+    if base_url:
+        yield base_url
+        return
+
     # Configure server
     host = "127.0.0.1"
     port = 5001  # Use different port to avoid conflicts
@@ -75,6 +80,21 @@ def live_server(app):
     # Server will stop when test session ends (daemon thread)
 
 
+def _clear_tasks_via_api(base_url: str) -> None:
+    import requests
+
+    try:
+        response = requests.get(f"{base_url}/api/tasks", timeout=5)
+        response.raise_for_status()
+        tasks = response.json().get("tasks", [])
+        for task in tasks:
+            task_id = task.get("id")
+            if task_id is not None:
+                requests.delete(f"{base_url}/api/tasks/{task_id}", timeout=5)
+    except Exception as exc:
+        print(f"Warning: failed to clear tasks via API: {exc}")
+
+
 @pytest.fixture(scope="function")
 def clean_db(app):
     """
@@ -83,6 +103,13 @@ def clean_db(app):
     This fixture clears all task data before each test to ensure
     test isolation, while keeping the schema intact.
     """
+    base_url = os.getenv("TEST_BASE_URL")
+    if base_url:
+        _clear_tasks_via_api(base_url)
+        yield None
+        _clear_tasks_via_api(base_url)
+        return
+
     with app.app_context():
         # Clear all tasks (not drop/create to avoid schema issues across threads)
         from app.models import Task
