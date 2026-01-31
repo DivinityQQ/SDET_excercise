@@ -14,7 +14,7 @@ Key SDET Concepts Demonstrated:
 
 import pytest
 import json
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 
 class TestTitleValidation:
@@ -260,7 +260,7 @@ class TestDueDateValidation:
         Test that valid ISO format date is accepted.
         """
         # Arrange
-        future_date = (datetime.utcnow() + timedelta(days=7)).isoformat()
+        future_date = (datetime.now(timezone.utc) + timedelta(days=7)).isoformat()
         data = {
             "title": "Test Task",
             "due_date": future_date

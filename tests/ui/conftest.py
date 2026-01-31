@@ -17,6 +17,7 @@ import pytest
 import threading
 from typing import Generator
 from playwright.sync_api import Page, Browser, BrowserContext
+from sqlalchemy import delete
 
 # Set testing environment
 os.environ["FLASK_ENV"] = "testing"
@@ -85,11 +86,11 @@ def clean_db(app):
     with app.app_context():
         # Clear all tasks (not drop/create to avoid schema issues across threads)
         from app.models import Task
-        db.session.query(Task).delete()
+        db.session.execute(delete(Task))
         db.session.commit()
         yield db
         # Clean up after test
-        db.session.query(Task).delete()
+        db.session.execute(delete(Task))
         db.session.commit()
 
 

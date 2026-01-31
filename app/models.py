@@ -5,7 +5,7 @@ This module defines SQLAlchemy models representing the data structure
 of the application. Each model maps to a database table.
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 from typing import Any
 
@@ -58,17 +58,17 @@ class Task(db.Model):
         nullable=False,
         default=TaskPriority.MEDIUM.value
     )
-    due_date: datetime | None = db.Column(db.DateTime, nullable=True)
+    due_date: datetime | None = db.Column(db.DateTime(timezone=True), nullable=True)
     created_at: datetime = db.Column(
-        db.DateTime,
+        db.DateTime(timezone=True),
         nullable=False,
-        default=datetime.utcnow
+        default=lambda: datetime.now(timezone.utc)
     )
     updated_at: datetime = db.Column(
-        db.DateTime,
+        db.DateTime(timezone=True),
         nullable=False,
-        default=datetime.utcnow,
-        onupdate=datetime.utcnow
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc)
     )
 
     def to_dict(self) -> dict[str, Any]:

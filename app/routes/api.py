@@ -14,9 +14,9 @@ Endpoints:
 """
 
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from flask import Blueprint, jsonify, request, Response
-from sqlalchemy import desc
+from sqlalchemy import select
 
 from app import db
 from app.models import Task, TaskStatus, TaskPriority
@@ -75,6 +75,13 @@ def validate_task_data(data: dict, required_fields: list[str] | None = None) -> 
     return True, None
 
 
+def ensure_utc(value: datetime) -> datetime:
+    """Normalize datetimes to timezone-aware UTC."""
+    if value.tzinfo is None:
+        return value.replace(tzinfo=timezone.utc)
+    return value.astimezone(timezone.utc)
+
+
 def parse_due_date(date_string: str | None) -> datetime | None:
     """
     Parse due date string to datetime object.
@@ -87,7 +94,8 @@ def parse_due_date(date_string: str | None) -> datetime | None:
     """
     if not date_string:
         return None
-    return datetime.fromisoformat(date_string.replace("Z", "+00:00"))
+    parsed = datetime.fromisoformat(date_string.replace("Z", "+00:00"))
+    return ensure_utc(parsed)
 
 
 # -----------------------------------------------------------------------------
@@ -110,17 +118,17 @@ def get_tasks() -> tuple[Response, int]:
     """
     logger.info("GET /api/tasks - Fetching all tasks")
 
-    # Start with base query
-    query = Task.query
+    # Start with base statement
+    stmt = select(Task)
 
     # Apply filters
     status = request.args.get("status")
     if status:
-        query = query.filter(Task.status == status)
+        stmt = stmt.where(Task.status == status)
 
     priority = request.args.get("priority")
     if priority:
-        query = query.filter(Task.priority == priority)
+        stmt = stmt.where(Task.priority == priority)
 
     # Apply sorting
     sort_field = request.args.get("sort", "created_at")
@@ -129,11 +137,11 @@ def get_tasks() -> tuple[Response, int]:
     if hasattr(Task, sort_field):
         column = getattr(Task, sort_field)
         if sort_order == "desc":
-            query = query.order_by(desc(column))
+            stmt = stmt.order_by(column.desc())
         else:
-            query = query.order_by(column)
+            stmt = stmt.order_by(column.asc())
 
-    tasks = query.all()
+    tasks = db.session.scalars(stmt).all()
     logger.info(f"Found {len(tasks)} tasks")
 
     return jsonify({
@@ -156,7 +164,7 @@ def get_task(task_id: int) -> tuple[Response, int]:
     """
     logger.info(f"GET /api/tasks/{task_id} - Fetching task")
 
-    task = Task.query.get(task_id)
+    task = db.session.get(Task, task_id)
     if not task:
         logger.warning(f"Task {task_id} not found")
         return jsonify({"error": "Task not found"}), 404
@@ -229,7 +237,7 @@ def update_task(task_id: int) -> tuple[Response, int]:
     """
     logger.info(f"PUT /api/tasks/{task_id} - Updating task")
 
-    task = Task.query.get(task_id)
+    task = db.session.get(Task, task_id)
     if not task:
         logger.warning(f"Task {task_id} not found")
         return jsonify({"error": "Task not found"}), 404
@@ -276,7 +284,7 @@ def delete_task(task_id: int) -> tuple[Response, int]:
     """
     logger.info(f"DELETE /api/tasks/{task_id} - Deleting task")
 
-    task = Task.query.get(task_id)
+    task = db.session.get(Task, task_id)
     if not task:
         logger.warning(f"Task {task_id} not found")
         return jsonify({"error": "Task not found"}), 404
@@ -308,7 +316,7 @@ def update_task_status(task_id: int) -> tuple[Response, int]:
     """
     logger.info(f"PATCH /api/tasks/{task_id}/status - Updating status")
 
-    task = Task.query.get(task_id)
+    task = db.session.get(Task, task_id)
     if not task:
         logger.warning(f"Task {task_id} not found")
         return jsonify({"error": "Task not found"}), 404

@@ -15,7 +15,7 @@ Key Concepts Demonstrated:
 
 import os
 import pytest
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any
 from faker import Faker
 
@@ -154,10 +154,12 @@ def task_factory(db_session):
 
     # Cleanup: Remove all created tasks after the test
     for task in created_tasks:
-        try:
-            db_session.session.delete(task)
-        except Exception:
-            pass
+        task_id = getattr(task, "id", None)
+        if not task_id:
+            continue
+        existing = db_session.session.get(Task, task_id)
+        if existing:
+            db_session.session.delete(existing)
     db_session.session.commit()
 
 
@@ -202,7 +204,7 @@ def multiple_tasks(task_factory) -> list[Task]:
             title="High Priority Pending",
             status=TaskStatus.PENDING.value,
             priority=TaskPriority.HIGH.value,
-            due_date=datetime.utcnow() + timedelta(days=1)
+            due_date=datetime.now(timezone.utc) + timedelta(days=1)
         ),
         task_factory(
             title="Medium Priority In Progress",
@@ -218,7 +220,7 @@ def multiple_tasks(task_factory) -> list[Task]:
             title="High Priority In Progress",
             status=TaskStatus.IN_PROGRESS.value,
             priority=TaskPriority.HIGH.value,
-            due_date=datetime.utcnow() + timedelta(days=7)
+            due_date=datetime.now(timezone.utc) + timedelta(days=7)
         ),
     ]
     return tasks
@@ -241,7 +243,7 @@ def valid_task_data() -> dict[str, Any]:
         "description": "This is a test task description",
         "status": TaskStatus.PENDING.value,
         "priority": TaskPriority.MEDIUM.value,
-        "due_date": (datetime.utcnow() + timedelta(days=7)).isoformat()
+        "due_date": (datetime.now(timezone.utc) + timedelta(days=7)).isoformat()
     }
 
 

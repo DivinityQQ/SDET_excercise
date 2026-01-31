@@ -13,7 +13,9 @@ Routes:
 """
 
 import logging
-from flask import Blueprint, render_template, redirect, url_for, request, flash
+from datetime import datetime, timezone
+from flask import Blueprint, render_template, redirect, url_for, request, flash, abort
+from sqlalchemy import select
 
 from app import db
 from app.models import Task, TaskStatus, TaskPriority
@@ -21,6 +23,21 @@ from app.models import Task, TaskStatus, TaskPriority
 logger = logging.getLogger(__name__)
 
 views_bp = Blueprint("views", __name__)
+
+
+def get_task_or_404(task_id: int) -> Task:
+    """Fetch task by ID or raise 404."""
+    task = db.session.get(Task, task_id)
+    if not task:
+        abort(404)
+    return task
+
+
+def ensure_utc(value: datetime) -> datetime:
+    """Normalize datetimes to timezone-aware UTC."""
+    if value.tzinfo is None:
+        return value.replace(tzinfo=timezone.utc)
+    return value.astimezone(timezone.utc)
 
 
 @views_bp.route("/")
@@ -41,15 +58,16 @@ def index():
     status_filter = request.args.get("status", "")
     priority_filter = request.args.get("priority", "")
 
-    # Build query with filters
-    query = Task.query
+    # Build statement with filters
+    stmt = select(Task)
 
     if status_filter:
-        query = query.filter(Task.status == status_filter)
+        stmt = stmt.where(Task.status == status_filter)
     if priority_filter:
-        query = query.filter(Task.priority == priority_filter)
+        stmt = stmt.where(Task.priority == priority_filter)
 
-    tasks = query.order_by(Task.created_at.desc()).all()
+    stmt = stmt.order_by(Task.created_at.desc())
+    tasks = db.session.scalars(stmt).all()
 
     return render_template(
         "index.html",
@@ -112,9 +130,8 @@ def create_task():
     due_date = None
     due_date_str = request.form.get("due_date")
     if due_date_str:
-        from datetime import datetime
         try:
-            due_date = datetime.fromisoformat(due_date_str)
+            due_date = ensure_utc(datetime.fromisoformat(due_date_str))
         except ValueError:
             flash("Invalid date format", "error")
             return redirect(url_for("views.new_task"))
@@ -149,7 +166,7 @@ def view_task(task_id: int):
     """
     logger.info(f"GET /tasks/{task_id} - Viewing task")
 
-    task = Task.query.get_or_404(task_id)
+    task = get_task_or_404(task_id)
 
     return render_template(
         "task_detail.html",
@@ -171,7 +188,7 @@ def edit_task(task_id: int):
     """
     logger.info(f"GET /tasks/{task_id}/edit - Rendering edit form")
 
-    task = Task.query.get_or_404(task_id)
+    task = get_task_or_404(task_id)
 
     return render_template(
         "task_form.html",
@@ -196,7 +213,7 @@ def update_task(task_id: int):
     """
     logger.info(f"POST /tasks/{task_id}/update - Updating task from form")
 
-    task = Task.query.get_or_404(task_id)
+    task = get_task_or_404(task_id)
 
     title = request.form.get("title", "").strip()
 
@@ -212,9 +229,8 @@ def update_task(task_id: int):
     due_date = None
     due_date_str = request.form.get("due_date")
     if due_date_str:
-        from datetime import datetime
         try:
-            due_date = datetime.fromisoformat(due_date_str)
+            due_date = ensure_utc(datetime.fromisoformat(due_date_str))
         except ValueError:
             flash("Invalid date format", "error")
             return redirect(url_for("views.edit_task", task_id=task_id))
@@ -246,7 +262,7 @@ def delete_task(task_id: int):
     """
     logger.info(f"POST /tasks/{task_id}/delete - Deleting task")
 
-    task = Task.query.get_or_404(task_id)
+    task = get_task_or_404(task_id)
 
     db.session.delete(task)
     db.session.commit()
@@ -273,7 +289,7 @@ def update_status(task_id: int):
     """
     logger.info(f"POST /tasks/{task_id}/status - Quick status update")
 
-    task = Task.query.get_or_404(task_id)
+    task = get_task_or_404(task_id)
 
     new_status = request.form.get("status")
     if new_status in [s.value for s in TaskStatus]:
