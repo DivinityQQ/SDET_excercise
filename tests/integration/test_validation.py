@@ -387,6 +387,163 @@ class TestRequestBodyValidation:
         assert response.status_code == 415
 
 
+class TestEstimatedMinutesValidation:
+    """Tests for task estimated_minutes field validation."""
+
+    @pytest.mark.api
+    def test_create_task_with_valid_estimated_minutes_succeeds(
+        self, client, db_session, api_headers
+    ):
+        """
+        Test that valid estimated_minutes is accepted.
+        """
+        # Arrange
+        data = {
+            "title": "Test Task",
+            "estimated_minutes": 30
+        }
+
+        # Act
+        response = client.post(
+            "/api/tasks",
+            data=json.dumps(data),
+            headers=api_headers
+        )
+
+        # Assert
+        assert response.status_code == 201
+        result = json.loads(response.data)
+        assert result["estimated_minutes"] == 30
+
+    @pytest.mark.api
+    def test_create_task_with_null_estimated_minutes_succeeds(
+        self, client, db_session, api_headers
+    ):
+        """
+        Test that null estimated_minutes is accepted (optional field).
+        """
+        # Arrange
+        data = {
+            "title": "Test Task",
+            "estimated_minutes": None
+        }
+
+        # Act
+        response = client.post(
+            "/api/tasks",
+            data=json.dumps(data),
+            headers=api_headers
+        )
+
+        # Assert
+        assert response.status_code == 201
+        result = json.loads(response.data)
+        assert result["estimated_minutes"] is None
+
+    @pytest.mark.api
+    def test_create_task_without_estimated_minutes_defaults_to_none(
+        self, client, db_session, api_headers
+    ):
+        """
+        Test that omitting estimated_minutes defaults to None.
+        """
+        # Arrange
+        data = {"title": "Test Task"}
+
+        # Act
+        response = client.post(
+            "/api/tasks",
+            data=json.dumps(data),
+            headers=api_headers
+        )
+
+        # Assert
+        assert response.status_code == 201
+        result = json.loads(response.data)
+        assert result["estimated_minutes"] is None
+
+    @pytest.mark.api
+    @pytest.mark.parametrize("invalid_value", [
+        0,          # Zero is not valid (must be positive)
+        -1,         # Negative value
+        -100,       # Large negative value
+        "thirty",   # String instead of int
+        3.5,        # Float instead of int
+    ])
+    def test_create_task_with_invalid_estimated_minutes_returns_400(
+        self, client, db_session, api_headers, invalid_value
+    ):
+        """
+        Test that invalid estimated_minutes values are rejected.
+
+        Boundary: Must be a positive integer (>= 1).
+        """
+        # Arrange
+        data = {
+            "title": "Test Task",
+            "estimated_minutes": invalid_value
+        }
+
+        # Act
+        response = client.post(
+            "/api/tasks",
+            data=json.dumps(data),
+            headers=api_headers
+        )
+
+        # Assert
+        assert response.status_code == 400
+        error_data = json.loads(response.data)
+        assert "error" in error_data
+
+    @pytest.mark.api
+    def test_create_task_with_minimum_valid_estimated_minutes(
+        self, client, db_session, api_headers
+    ):
+        """
+        Test boundary: minimum valid value is 1 minute.
+        """
+        # Arrange
+        data = {
+            "title": "Test Task",
+            "estimated_minutes": 1
+        }
+
+        # Act
+        response = client.post(
+            "/api/tasks",
+            data=json.dumps(data),
+            headers=api_headers
+        )
+
+        # Assert
+        assert response.status_code == 201
+        result = json.loads(response.data)
+        assert result["estimated_minutes"] == 1
+
+    @pytest.mark.api
+    def test_update_task_estimated_minutes(
+        self, client, db_session, sample_task, api_headers
+    ):
+        """
+        Test updating estimated_minutes on an existing task.
+        """
+        # Arrange
+        update_data = {"estimated_minutes": 60}
+
+        # Act
+        response = client.put(
+            f"/api/tasks/{sample_task.id}",
+            data=json.dumps(update_data),
+            headers=api_headers
+        )
+
+        # Assert
+        assert response.status_code == 200
+        result = json.loads(response.data)
+        assert result["estimated_minutes"] == 60
+
+
 class TestIdValidation:
     """Tests for task ID validation in URLs."""
 

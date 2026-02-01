@@ -141,6 +141,10 @@ class TaskListPage(BasePage):
         """Get locator for a task's update status button."""
         return self.get_by_test_id(f"update-status-btn-{task_id}")
 
+    def get_task_estimate(self, task_id: int) -> Locator:
+        """Get locator for a task's estimated duration badge."""
+        return self.get_by_test_id(f"task-estimate-{task_id}")
+
     # -------------------------------------------------------------------------
     # Page Actions
     # -------------------------------------------------------------------------
@@ -298,3 +302,8 @@ class TaskListPage(BasePage):
         """Assert that the displayed task count matches expected."""
         actual = self.get_task_count()
         assert actual == expected, f"Expected {expected} tasks, but found {actual}"
+
+    def assert_task_has_estimate(self, task_id: int, expected_minutes: int) -> None:
+        """Assert that a task has the expected estimated duration."""
+        estimate_text = self.get_task_estimate(task_id).text_content()
+        assert f"{expected_minutes} min" in estimate_text

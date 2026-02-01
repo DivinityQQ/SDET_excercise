@@ -77,6 +77,11 @@
                                 Due: {{ task.due_date.strftime('%Y-%m-%d') }}
                             </span>
                         {% endif %}
+                        {% if task.estimated_minutes %}
+                            <span class="task-estimate" data-testid="task-estimate-{{ task.id }}">
+                                Est: {{ task.estimated_minutes }} min
+                            </span>
+                        {% endif %}
                     </div>
 
                     <div class="task-actions">

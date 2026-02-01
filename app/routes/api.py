@@ -74,6 +74,11 @@ def validate_task_data(data: dict, required_fields: list[str] | None = None) -> 
         except (ValueError, AttributeError):
             return False, "Invalid due_date format. Use ISO format (YYYY-MM-DDTHH:MM:SS)"
 
+    # Validate estimated_minutes if provided
+    if "estimated_minutes" in data and data["estimated_minutes"] is not None:
+        if not isinstance(data["estimated_minutes"], int) or data["estimated_minutes"] < 1:
+            return False, "estimated_minutes must be a positive integer"
+
     return True, None
 
 
@@ -195,6 +200,7 @@ def create_task() -> tuple[Response, int]:
         status: Task status (optional, default: pending)
         priority: Task priority (optional, default: medium)
         due_date: Due date in ISO format (optional)
+        estimated_minutes: Estimated duration in minutes (optional, positive integer)
 
     Returns:
         JSON response with created task and 201 status code,
@@ -218,7 +224,8 @@ def create_task() -> tuple[Response, int]:
         description=data.get("description"),
         status=data.get("status", TaskStatus.PENDING.value),
         priority=data.get("priority", TaskPriority.MEDIUM.value),
-        due_date=parse_due_date(data.get("due_date"))
+        due_date=parse_due_date(data.get("due_date")),
+        estimated_minutes=data.get("estimated_minutes")
     )
 
     db.session.add(task)
@@ -242,6 +249,7 @@ def update_task(task_id: int) -> tuple[Response, int]:
         status: Task status
         priority: Task priority
         due_date: Due date in ISO format
+        estimated_minutes: Estimated duration in minutes (positive integer)
 
     Returns:
         JSON response with updated task and 200 status code,
@@ -275,6 +283,8 @@ def update_task(task_id: int) -> tuple[Response, int]:
         task.priority = data["priority"]
     if "due_date" in data:
         task.due_date = parse_due_date(data["due_date"])
+    if "estimated_minutes" in data:
+        task.estimated_minutes = data["estimated_minutes"]
 
     db.session.commit()
 

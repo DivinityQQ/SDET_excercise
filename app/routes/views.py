@@ -136,12 +136,26 @@ def create_task():
             flash("Invalid date format", "error")
             return redirect(url_for("views.new_task"))
 
+    # Parse estimated minutes if provided
+    estimated_minutes = None
+    estimated_minutes_str = request.form.get("estimated_minutes")
+    if estimated_minutes_str:
+        try:
+            estimated_minutes = int(estimated_minutes_str)
+            if estimated_minutes < 1:
+                flash("Estimated minutes must be a positive number", "error")
+                return redirect(url_for("views.new_task"))
+        except ValueError:
+            flash("Invalid estimated minutes", "error")
+            return redirect(url_for("views.new_task"))
+
     task = Task(
         title=title,
         description=request.form.get("description", "").strip(),
         status=request.form.get("status", TaskStatus.PENDING.value),
         priority=request.form.get("priority", TaskPriority.MEDIUM.value),
-        due_date=due_date
+        due_date=due_date,
+        estimated_minutes=estimated_minutes
     )
 
     db.session.add(task)
@@ -235,11 +249,25 @@ def update_task(task_id: int):
             flash("Invalid date format", "error")
             return redirect(url_for("views.edit_task", task_id=task_id))
 
+    # Parse estimated minutes if provided
+    estimated_minutes = None
+    estimated_minutes_str = request.form.get("estimated_minutes")
+    if estimated_minutes_str:
+        try:
+            estimated_minutes = int(estimated_minutes_str)
+            if estimated_minutes < 1:
+                flash("Estimated minutes must be a positive number", "error")
+                return redirect(url_for("views.edit_task", task_id=task_id))
+        except ValueError:
+            flash("Invalid estimated minutes", "error")
+            return redirect(url_for("views.edit_task", task_id=task_id))
+
     task.title = title
     task.description = request.form.get("description", "").strip()
     task.status = request.form.get("status", task.status)
     task.priority = request.form.get("priority", task.priority)
     task.due_date = due_date
+    task.estimated_minutes = estimated_minutes
 
     db.session.commit()
 

@@ -102,6 +102,11 @@ class TaskFormPage(BasePage):
         return self.get_by_test_id("due-date-input")
 
     @property
+    def estimated_minutes_input(self) -> Locator:
+        """Locator for the estimated minutes input."""
+        return self.get_by_test_id("estimated-minutes-input")
+
+    @property
     def submit_button(self) -> Locator:
         """Locator for the submit button."""
         return self.get_by_test_id("submit-button")
@@ -180,6 +185,19 @@ class TaskFormPage(BasePage):
         self.due_date_input.fill(date_string)
         return self
 
+    def fill_estimated_minutes(self, minutes: int) -> "TaskFormPage":
+        """
+        Fill the estimated minutes field.
+
+        Args:
+            minutes: Estimated duration in minutes.
+
+        Returns:
+            Self for method chaining.
+        """
+        self.estimated_minutes_input.fill(str(minutes))
+        return self
+
     def clear_due_date(self) -> "TaskFormPage":
         """
         Clear the due date field.
@@ -210,7 +228,8 @@ class TaskFormPage(BasePage):
         description: str = "",
         status: str = "pending",
         priority: str = "medium",
-        due_date: str = ""
+        due_date: str = "",
+        estimated_minutes: int | None = None
     ) -> "TaskFormPage":
         """
         Fill all form fields at once.
@@ -221,6 +240,7 @@ class TaskFormPage(BasePage):
             status: Task status.
             priority: Task priority.
             due_date: Due date string.
+            estimated_minutes: Estimated duration in minutes.
 
         Returns:
             Self for method chaining.
@@ -236,6 +256,9 @@ class TaskFormPage(BasePage):
         if due_date:
             self.fill_due_date(due_date)
 
+        if estimated_minutes is not None:
+            self.fill_estimated_minutes(estimated_minutes)
+
         return self
 
     def create_task(
@@ -244,7 +267,8 @@ class TaskFormPage(BasePage):
         description: str = "",
         status: str = "pending",
         priority: str = "medium",
-        due_date: str = ""
+        due_date: str = "",
+        estimated_minutes: int | None = None
     ) -> None:
         """
         Fill form and submit to create a new task.
@@ -255,8 +279,9 @@ class TaskFormPage(BasePage):
             status: Task status.
             priority: Task priority.
             due_date: Due date string.
+            estimated_minutes: Estimated duration in minutes.
         """
-        self.fill_form(title, description, status, priority, due_date)
+        self.fill_form(title, description, status, priority, due_date, estimated_minutes)
         self.submit()
 
     # -------------------------------------------------------------------------
@@ -282,6 +307,10 @@ class TaskFormPage(BasePage):
     def get_due_date_value(self) -> str:
         """Get current value of due date field."""
         return self.due_date_input.input_value()
+
+    def get_estimated_minutes_value(self) -> str:
+        """Get current value of estimated minutes field."""
+        return self.estimated_minutes_input.input_value()
 
     # -------------------------------------------------------------------------
     # Assertions

@@ -38,3 +38,33 @@ def test_task_due_date_serialization(db_session):
     else:
         expected = due_date.astimezone(parsed.tzinfo)
     assert parsed == expected
+
+
+@pytest.mark.unit
+def test_task_with_estimated_minutes(db_session):
+    """Test that estimated_minutes is correctly stored and serialized."""
+    # Arrange
+    task = Task(title="Estimated Task", estimated_minutes=30)
+    db_session.session.add(task)
+    db_session.session.commit()
+
+    # Act
+    data = task.to_dict()
+
+    # Assert
+    assert data["estimated_minutes"] == 30
+
+
+@pytest.mark.unit
+def test_task_estimated_minutes_defaults_to_none(db_session):
+    """Test that estimated_minutes defaults to None when not provided."""
+    # Arrange
+    task = Task(title="No Estimate Task")
+    db_session.session.add(task)
+    db_session.session.commit()
+
+    # Act
+    data = task.to_dict()
+
+    # Assert
+    assert data["estimated_minutes"] is None
