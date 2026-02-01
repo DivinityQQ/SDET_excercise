@@ -131,6 +131,8 @@ ruff check . --fix  # auto-fix issues
 
 GitHub Actions simulates a multi-stage pipeline:
 
+- PR flow smoke change (safe to remove after verification).
+
 - **PR Checks** (`.github/workflows/pr.yml`)
   - Lint, unit tests, integration tests
   - UI smoke tests only (fast signal)
