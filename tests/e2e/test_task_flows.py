@@ -274,6 +274,77 @@ class TestCompleteTaskLifecycle:
 
 
 @pytest.mark.ui
+class TestTaskEstimatedMinutesFlow:
+    """Tests for task estimated duration feature."""
+
+    def test_create_task_with_estimated_minutes(self, task_form_page, task_list_page, page):
+        """
+        Test creating a task with estimated duration.
+
+        User Flow:
+        1. Navigate to new task form
+        2. Fill form including estimated minutes
+        3. Submit form
+        4. Verify estimated duration shows in task list
+        """
+        # Arrange
+        task_data = {
+            "title": "Task with Estimate",
+            "description": "This task has a time estimate",
+            "priority": "high",
+            "estimated_minutes": 45
+        }
+
+        # Act
+        task_form_page.create_task(**task_data)
+
+        # Assert
+        task_form_page.assert_flash_success_visible()
+
+        # Verify task appears in list with estimate
+        task_list_page.navigate()
+        titles = task_list_page.get_all_task_titles()
+        assert task_data["title"] in titles
+
+        # Verify estimate is displayed
+        estimate_badge = page.locator("[data-testid^='task-estimate-']").first
+        expect(estimate_badge).to_contain_text("45 min")
+
+    def test_edit_task_estimated_minutes(self, task_form_page, task_list_page, page):
+        """
+        Test editing a task's estimated duration.
+
+        User Flow:
+        1. Create a task with an estimate
+        2. Edit the task
+        3. Change the estimated minutes
+        4. Verify change is saved
+        """
+        # Arrange - Create initial task with estimate
+        task_form_page.create_task(
+            title="Task to Update Estimate",
+            estimated_minutes=30
+        )
+
+        # Navigate to list and click edit
+        task_list_page.navigate()
+        page.locator("[data-testid^='edit-btn-']").first.click()
+        page.wait_for_load_state("networkidle")
+
+        # Act - Update the estimated minutes
+        task_form_page.fill_estimated_minutes(60)
+        task_form_page.submit()
+
+        # Assert
+        task_form_page.assert_flash_success_visible()
+
+        # Verify updated estimate in list
+        task_list_page.navigate()
+        estimate_badge = page.locator("[data-testid^='task-estimate-']").first
+        expect(estimate_badge).to_contain_text("60 min")
+
+
+@pytest.mark.ui
 class TestTaskStatusFlow:
     """Tests for task status management."""
 
