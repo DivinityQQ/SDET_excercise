@@ -59,6 +59,7 @@ class Task(db.Model):
         default=TaskPriority.MEDIUM.value
     )
     due_date: datetime | None = db.Column(db.DateTime(timezone=True), nullable=True)
+    estimated_minutes: int | None = db.Column(db.Integer, nullable=True)
     created_at: datetime = db.Column(
         db.DateTime(timezone=True),
         nullable=False,
@@ -85,6 +86,7 @@ class Task(db.Model):
             "status": self.status,
             "priority": self.priority,
             "due_date": self.due_date.isoformat() if self.due_date else None,
+            "estimated_minutes": self.estimated_minutes,
             "created_at": self.created_at.isoformat(),
             "updated_at": self.updated_at.isoformat(),
         }

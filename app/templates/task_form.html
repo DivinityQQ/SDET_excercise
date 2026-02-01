@@ -70,6 +70,21 @@
                    data-testid="due-date-input">
         </div>
 
+        <!-- Estimated Minutes Field -->
+        <div class="form-group">
+            <label for="estimated_minutes" data-testid="estimated-minutes-label">
+                Estimated Duration (minutes)
+            </label>
+            <input type="number"
+                   id="estimated_minutes"
+                   name="estimated_minutes"
+                   value="{{ task.estimated_minutes if task and task.estimated_minutes else '' }}"
+                   min="1"
+                   placeholder="e.g., 30"
+                   data-testid="estimated-minutes-input">
+            <span class="help-text">How long do you expect this task to take?</span>
+        </div>
+
         <!-- Form Actions -->
         <div class="form-actions">
             <button type="submit" class="btn btn-primary" data-testid="submit-button">
