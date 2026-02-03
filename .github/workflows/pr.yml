@@ -25,7 +25,7 @@ jobs:
           python-version: "3.13"
       - run: python -m pip install --upgrade pip
       - run: pip install -r requirements.txt
-      - run: pytest tests/unit tests/mocks -v
+      - run: pytest -m unit -v
 
   integration-tests:
     runs-on: ubuntu-latest
@@ -37,7 +37,7 @@ jobs:
           python-version: "3.13"
       - run: python -m pip install --upgrade pip
       - run: pip install -r requirements.txt
-      - run: pytest tests/integration -v
+      - run: pytest -m integration -v
 
   ui-smoke:
     runs-on: ubuntu-latest
@@ -50,4 +50,4 @@ jobs:
       - run: python -m pip install --upgrade pip
       - run: pip install -r requirements.txt
       - run: playwright install --with-deps chromium
-      - run: pytest tests/e2e -m "smoke" -v --browser chromium
+      - run: pytest -m "e2e and smoke" -v --browser chromium

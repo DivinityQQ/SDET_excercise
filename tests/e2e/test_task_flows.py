@@ -17,7 +17,6 @@ from playwright.sync_api import expect
 pytestmark = pytest.mark.e2e
 
 
-@pytest.mark.ui
 class TestTaskCreationFlow:
     """Tests for the task creation user flow."""
 
@@ -99,7 +98,6 @@ class TestTaskCreationFlow:
         task_form_page.assert_url_contains("/")
 
 
-@pytest.mark.ui
 class TestTaskViewFlow:
     """Tests for viewing task details."""
 
@@ -132,7 +130,6 @@ class TestTaskViewFlow:
         expect(page.get_by_test_id("task-description")).to_contain_text(task_data["description"])
 
 
-@pytest.mark.ui
 class TestTaskEditFlow:
     """Tests for editing tasks."""
 
@@ -177,7 +174,6 @@ class TestTaskEditFlow:
         assert "Original Title" not in titles
 
 
-@pytest.mark.ui
 class TestTaskDeletionFlow:
     """Tests for deleting tasks."""
 
@@ -214,7 +210,6 @@ class TestTaskDeletionFlow:
         assert task_list_page.get_task_count() == initial_count - 1
 
 
-@pytest.mark.ui
 class TestCompleteTaskLifecycle:
     """Tests for complete task lifecycle (CRUD)."""
 
@@ -273,7 +268,6 @@ class TestCompleteTaskLifecycle:
         assert "Updated Lifecycle Task" not in task_list_page.get_all_task_titles()
 
 
-@pytest.mark.ui
 class TestTaskEstimatedMinutesFlow:
     """Tests for task estimated duration feature."""
 
@@ -344,7 +338,6 @@ class TestTaskEstimatedMinutesFlow:
         expect(estimate_badge).to_contain_text("60 min")
 
 
-@pytest.mark.ui
 class TestTaskStatusFlow:
     """Tests for task status management."""
 

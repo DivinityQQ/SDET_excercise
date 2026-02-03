@@ -75,7 +75,7 @@ jobs:
       - name: Run smoke tests against DEV
         env:
           TEST_BASE_URL: http://localhost:5001
-        run: pytest tests/smoke -v
+        run: pytest -m "smoke and not e2e" -v
 
       - name: Cleanup dev container
         if: always()

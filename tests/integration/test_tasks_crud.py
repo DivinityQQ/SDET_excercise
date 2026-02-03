@@ -25,7 +25,6 @@ pytestmark = pytest.mark.integration
 class TestGetTasks:
     """Tests for GET /api/tasks endpoint."""
 
-    @pytest.mark.api
     def test_get_tasks_returns_empty_list_when_no_tasks(
         self, client, db_session
     ):
@@ -45,7 +44,6 @@ class TestGetTasks:
         assert data["tasks"] == []
         assert data["count"] == 0
 
-    @pytest.mark.api
     def test_get_tasks_returns_all_tasks(
         self, client, db_session, multiple_tasks
     ):
@@ -67,7 +65,6 @@ class TestGetTasks:
         assert data["count"] == 4
         assert len(data["tasks"]) == 4
 
-    @pytest.mark.api
     def test_get_tasks_with_status_filter(
         self, client, db_session, multiple_tasks
     ):
@@ -88,7 +85,6 @@ class TestGetTasks:
         for task in data["tasks"]:
             assert task["status"] == "in_progress"
 
-    @pytest.mark.api
     def test_get_tasks_with_priority_filter(
         self, client, db_session, multiple_tasks
     ):
@@ -113,7 +109,6 @@ class TestGetTasks:
 class TestGetTask:
     """Tests for GET /api/tasks/<id> endpoint."""
 
-    @pytest.mark.api
     def test_get_task_returns_task_by_id(
         self, client, db_session, sample_task
     ):
@@ -134,7 +129,6 @@ class TestGetTask:
         assert data["title"] == sample_task.title
         assert data["description"] == sample_task.description
 
-    @pytest.mark.api
     def test_get_task_returns_404_for_nonexistent_task(
         self, client, db_session
     ):
@@ -158,7 +152,6 @@ class TestGetTask:
 class TestCreateTask:
     """Tests for POST /api/tasks endpoint."""
 
-    @pytest.mark.api
     @pytest.mark.smoke
     def test_create_task_with_valid_data(
         self, client, db_session, valid_task_data, api_headers
@@ -187,7 +180,6 @@ class TestCreateTask:
         assert "id" in data
         assert data["id"] is not None
 
-    @pytest.mark.api
     def test_create_task_with_minimal_data(
         self, client, db_session, minimal_task_data, api_headers
     ):
@@ -212,7 +204,6 @@ class TestCreateTask:
         assert data["status"] == TaskStatus.PENDING.value  # Default
         assert data["priority"] == TaskPriority.MEDIUM.value  # Default
 
-    @pytest.mark.api
     def test_create_task_without_title_returns_400(
         self, client, db_session, api_headers
     ):
@@ -243,7 +234,6 @@ class TestCreateTask:
 class TestUpdateTask:
     """Tests for PUT /api/tasks/<id> endpoint."""
 
-    @pytest.mark.api
     def test_update_task_with_valid_data(
         self, client, db_session, sample_task, api_headers
     ):
@@ -277,7 +267,6 @@ class TestUpdateTask:
         assert data["status"] == updated_data["status"]
         assert data["priority"] == updated_data["priority"]
 
-    @pytest.mark.api
     def test_update_task_partial_data(
         self, client, db_session, sample_task, api_headers
     ):
@@ -305,7 +294,6 @@ class TestUpdateTask:
         assert data["title"] == partial_update["title"]
         assert data["status"] == original_status  # Unchanged
 
-    @pytest.mark.api
     def test_update_nonexistent_task_returns_404(
         self, client, db_session, api_headers
     ):
@@ -333,7 +321,6 @@ class TestUpdateTask:
 class TestDeleteTask:
     """Tests for DELETE /api/tasks/<id> endpoint."""
 
-    @pytest.mark.api
     def test_delete_task_removes_task(
         self, client, db_session, task_factory
     ):
@@ -358,7 +345,6 @@ class TestDeleteTask:
         get_response = client.get(f"/api/tasks/{task_id}")
         assert get_response.status_code == 404
 
-    @pytest.mark.api
     def test_delete_nonexistent_task_returns_404(
         self, client, db_session
     ):
@@ -379,7 +365,6 @@ class TestDeleteTask:
 class TestUpdateTaskStatus:
     """Tests for PATCH /api/tasks/<id>/status endpoint."""
 
-    @pytest.mark.api
     def test_update_status_changes_only_status(
         self, client, db_session, sample_task, api_headers
     ):
@@ -407,7 +392,6 @@ class TestUpdateTaskStatus:
         assert data["status"] == new_status
         assert data["title"] == original_title  # Unchanged
 
-    @pytest.mark.api
     @pytest.mark.parametrize("status", [
         TaskStatus.PENDING.value,
         TaskStatus.IN_PROGRESS.value,
@@ -440,7 +424,6 @@ class TestUpdateTaskStatus:
         data = json.loads(response.data)
         assert data["status"] == status
 
-    @pytest.mark.api
     def test_update_status_rejects_invalid_status(
         self, client, db_session, sample_task, api_headers
     ):

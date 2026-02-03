@@ -8,7 +8,9 @@ import pytest
 from app.models import Task, TaskStatus, TaskPriority
 
 
-@pytest.mark.unit
+pytestmark = pytest.mark.unit
+
+
 def test_task_defaults_and_to_dict(db_session):
     task = Task(title="Test Task")
     db_session.session.add(task)
@@ -23,7 +25,6 @@ def test_task_defaults_and_to_dict(db_session):
     assert data["updated_at"] is not None
 
 
-@pytest.mark.unit
 def test_task_due_date_serialization(db_session):
     due_date = datetime(2025, 1, 1, tzinfo=timezone.utc)
     task = Task(title="Due Date Task", due_date=due_date)
@@ -40,7 +41,6 @@ def test_task_due_date_serialization(db_session):
     assert parsed == expected
 
 
-@pytest.mark.unit
 def test_task_with_estimated_minutes(db_session):
     """Test that estimated_minutes is correctly stored and serialized."""
     # Arrange
@@ -55,7 +55,6 @@ def test_task_with_estimated_minutes(db_session):
     assert data["estimated_minutes"] == 30
 
 
-@pytest.mark.unit
 def test_task_estimated_minutes_defaults_to_none(db_session):
     """Test that estimated_minutes defaults to None when not provided."""
     # Arrange
