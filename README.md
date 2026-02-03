@@ -98,23 +98,38 @@ curl http://localhost:5003/api/health  # PROD
 pytest
 ```
 
-### By test type
+### By marker
 ```bash
-# Unit tests
-pytest tests/unit tests/mocks -v
+# Unit tests (fast, isolated)
+pytest -m unit -v
 
-# Integration (API) tests
-pytest tests/integration -v
+# Integration tests (API)
+pytest -m integration -v
 
-# E2E (Playwright) tests
-pytest tests/e2e -v
+# E2E tests (Playwright browser)
+pytest -m e2e -v
 
-# UI smoke only (fast PR signal)
-pytest tests/e2e -m "smoke" -v
+# Smoke tests (deployment health)
+pytest -m smoke -v
 
-# Smoke tests (post-deploy)
-pytest tests/smoke -v
+# Non-browser smoke tests
+pytest -m "smoke and not e2e" -v
+
+# E2E smoke only (fast PR signal)
+pytest -m "e2e and smoke" -v
+
+# All tests except slow
+pytest -m "not slow" -v
 ```
+
+### Available markers
+| Marker | Purpose |
+|--------|---------|
+| `unit` | Fast, isolated tests with no external dependencies |
+| `integration` | Tests requiring Flask test client (API tests) |
+| `e2e` | End-to-end browser tests using Playwright |
+| `smoke` | Critical path verification for deployment health |
+| `slow` | Tests taking longer than 5 seconds |
 
 ### With coverage
 ```bash

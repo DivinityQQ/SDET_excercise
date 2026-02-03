@@ -22,7 +22,6 @@ pytestmark = pytest.mark.integration
 class TestTitleValidation:
     """Tests for task title field validation."""
 
-    @pytest.mark.api
     def test_create_task_with_empty_title_returns_400(
         self, client, db_session, api_headers
     ):
@@ -47,7 +46,6 @@ class TestTitleValidation:
         assert "error" in error_data
         assert "title" in error_data["error"].lower()
 
-    @pytest.mark.api
     def test_create_task_with_whitespace_only_title_returns_400(
         self, client, db_session, api_headers
     ):
@@ -69,7 +67,6 @@ class TestTitleValidation:
         # Assert
         assert response.status_code == 400
 
-    @pytest.mark.api
     def test_create_task_with_max_length_title_succeeds(
         self, client, db_session, api_headers
     ):
@@ -94,7 +91,6 @@ class TestTitleValidation:
         result = json.loads(response.data)
         assert result["title"] == max_length_title
 
-    @pytest.mark.api
     def test_create_task_with_title_exceeding_max_length_returns_400(
         self, client, db_session, api_headers
     ):
@@ -123,7 +119,6 @@ class TestTitleValidation:
 class TestStatusValidation:
     """Tests for task status field validation."""
 
-    @pytest.mark.api
     @pytest.mark.parametrize("invalid_status", [
         "PENDING",          # Wrong case
         "Pending",          # Title case
@@ -160,7 +155,6 @@ class TestStatusValidation:
         error_data = json.loads(response.data)
         assert "error" in error_data
 
-    @pytest.mark.api
     @pytest.mark.parametrize("valid_status", [
         "pending",
         "in_progress",
@@ -194,7 +188,6 @@ class TestStatusValidation:
 class TestPriorityValidation:
     """Tests for task priority field validation."""
 
-    @pytest.mark.api
     @pytest.mark.parametrize("invalid_priority", [
         "HIGH",             # Wrong case
         "urgent",           # Invalid value
@@ -224,7 +217,6 @@ class TestPriorityValidation:
         # Assert
         assert response.status_code == 400
 
-    @pytest.mark.api
     @pytest.mark.parametrize("valid_priority", ["low", "medium", "high"])
     def test_create_task_with_valid_priority_succeeds(
         self, client, db_session, api_headers, valid_priority
@@ -254,7 +246,6 @@ class TestPriorityValidation:
 class TestDueDateValidation:
     """Tests for task due_date field validation."""
 
-    @pytest.mark.api
     def test_create_task_with_valid_iso_date_succeeds(
         self, client, db_session, api_headers
     ):
@@ -280,7 +271,6 @@ class TestDueDateValidation:
         result = json.loads(response.data)
         assert result["due_date"] is not None
 
-    @pytest.mark.api
     @pytest.mark.parametrize("invalid_date", [
         "not-a-date",
         "2024-13-01",       # Invalid month
@@ -310,7 +300,6 @@ class TestDueDateValidation:
         # Assert
         assert response.status_code == 400
 
-    @pytest.mark.api
     def test_create_task_with_null_due_date_succeeds(
         self, client, db_session, api_headers
     ):
@@ -339,7 +328,6 @@ class TestDueDateValidation:
 class TestRequestBodyValidation:
     """Tests for request body format validation."""
 
-    @pytest.mark.api
     def test_create_task_without_content_type_returns_415(
         self, client, db_session
     ):
@@ -356,7 +344,6 @@ class TestRequestBodyValidation:
         # Assert - 415 is correct for missing Content-Type
         assert response.status_code == 415
 
-    @pytest.mark.api
     def test_create_task_with_invalid_json_returns_400(
         self, client, db_session, api_headers
     ):
@@ -373,7 +360,6 @@ class TestRequestBodyValidation:
         # Assert
         assert response.status_code == 400
 
-    @pytest.mark.api
     def test_update_task_without_content_type_returns_415(
         self, client, db_session, sample_task
     ):
@@ -390,7 +376,6 @@ class TestRequestBodyValidation:
 class TestEstimatedMinutesValidation:
     """Tests for task estimated_minutes field validation."""
 
-    @pytest.mark.api
     def test_create_task_with_valid_estimated_minutes_succeeds(
         self, client, db_session, api_headers
     ):
@@ -415,7 +400,6 @@ class TestEstimatedMinutesValidation:
         result = json.loads(response.data)
         assert result["estimated_minutes"] == 30
 
-    @pytest.mark.api
     def test_create_task_with_null_estimated_minutes_succeeds(
         self, client, db_session, api_headers
     ):
@@ -440,7 +424,6 @@ class TestEstimatedMinutesValidation:
         result = json.loads(response.data)
         assert result["estimated_minutes"] is None
 
-    @pytest.mark.api
     def test_create_task_without_estimated_minutes_defaults_to_none(
         self, client, db_session, api_headers
     ):
@@ -462,7 +445,6 @@ class TestEstimatedMinutesValidation:
         result = json.loads(response.data)
         assert result["estimated_minutes"] is None
 
-    @pytest.mark.api
     @pytest.mark.parametrize("invalid_value", [
         0,          # Zero is not valid (must be positive)
         -1,         # Negative value
@@ -496,7 +478,6 @@ class TestEstimatedMinutesValidation:
         error_data = json.loads(response.data)
         assert "error" in error_data
 
-    @pytest.mark.api
     def test_create_task_with_minimum_valid_estimated_minutes(
         self, client, db_session, api_headers
     ):
@@ -521,7 +502,6 @@ class TestEstimatedMinutesValidation:
         result = json.loads(response.data)
         assert result["estimated_minutes"] == 1
 
-    @pytest.mark.api
     def test_update_task_estimated_minutes(
         self, client, db_session, sample_task, api_headers
     ):
@@ -547,7 +527,6 @@ class TestEstimatedMinutesValidation:
 class TestIdValidation:
     """Tests for task ID validation in URLs."""
 
-    @pytest.mark.api
     def test_get_task_with_negative_id_returns_404(
         self, client, db_session
     ):
@@ -562,7 +541,6 @@ class TestIdValidation:
         # Assert
         assert response.status_code == 404
 
-    @pytest.mark.api
     def test_get_task_with_zero_id_returns_404(
         self, client, db_session
     ):
@@ -577,7 +555,6 @@ class TestIdValidation:
         # Assert
         assert response.status_code == 404
 
-    @pytest.mark.api
     def test_get_task_with_very_large_id_returns_404(
         self, client, db_session
     ):

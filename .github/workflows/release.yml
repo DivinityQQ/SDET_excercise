@@ -146,7 +146,7 @@ jobs:
       - name: Run E2E tests against staging
         env:
           TEST_BASE_URL: http://localhost:5002
-        run: pytest tests/e2e -v --browser chromium
+        run: pytest -m "e2e and not slow" -v --browser chromium
 
       - name: Cleanup staging container
         if: always()
@@ -216,7 +216,7 @@ jobs:
       - name: Run smoke tests against PROD
         env:
           TEST_BASE_URL: http://localhost:5003
-        run: pytest tests/smoke -v
+        run: pytest -m smoke -v
 
       - name: Cleanup prod container
         if: always()

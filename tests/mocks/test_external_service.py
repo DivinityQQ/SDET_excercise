@@ -13,8 +13,12 @@ Key SDET Concepts Demonstrated:
 - Verifying mock calls
 """
 
+import pytest
 from unittest.mock import patch, MagicMock, call
 from datetime import datetime
+
+
+pytestmark = pytest.mark.unit
 
 
 # =============================================================================
