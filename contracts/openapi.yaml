@@ -1,0 +1,377 @@
+openapi: 3.0.3
+
+info:
+  title: Task Manager API Contract
+  version: 1.0.0
+  description: |
+    Provider-side API contract for the Task Manager service.
+
+    Learning focus:
+    - Keep one explicit source of truth for payload shapes.
+    - Validate that implementation responses stay compatible over time.
+
+    Note:
+    This file intentionally favors readability over advanced OpenAPI features.
+
+tags:
+  - name: Health
+    description: Service health endpoint used in smoke/deploy checks.
+  - name: Tasks
+    description: CRUD and workflow operations for tasks.
+
+paths:
+  /api/health:
+    get:
+      tags: [Health]
+      summary: Health check
+      description: Returns environment and version metadata for deployment verification.
+      responses:
+        "200":
+          description: Service is healthy.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+
+  /api/tasks:
+    get:
+      tags: [Tasks]
+      summary: List tasks
+      description: Returns all tasks, with optional filtering and sorting.
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/TaskStatus"
+          description: Filter tasks by status.
+        - name: priority
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/TaskPriority"
+          description: Filter tasks by priority.
+        - name: sort
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [created_at, due_date, priority, title]
+          description: Sort field.
+        - name: order
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [asc, desc]
+          description: Sort order.
+      responses:
+        "200":
+          description: Task list response.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TaskListResponse"
+
+    post:
+      tags: [Tasks]
+      summary: Create task
+      description: Creates a new task record.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TaskCreateRequest"
+      responses:
+        "201":
+          description: Task created.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Task"
+        "400":
+          description: Validation or malformed JSON error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "415":
+          description: Unsupported media type (for example missing/incorrect Content-Type).
+
+  /api/tasks/{task_id}:
+    get:
+      tags: [Tasks]
+      summary: Get task by ID
+      description: Returns a single task by numeric ID.
+      parameters:
+        - $ref: "#/components/parameters/TaskId"
+      responses:
+        "200":
+          description: Task found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Task"
+        "404":
+          description: Task does not exist.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+    put:
+      tags: [Tasks]
+      summary: Update task
+      description: Updates one or more task fields.
+      parameters:
+        - $ref: "#/components/parameters/TaskId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TaskUpdateRequest"
+      responses:
+        "200":
+          description: Task updated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Task"
+        "400":
+          description: Validation or malformed JSON error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Task does not exist.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "415":
+          description: Unsupported media type (for example missing/incorrect Content-Type).
+
+    delete:
+      tags: [Tasks]
+      summary: Delete task
+      description: Deletes a single task by ID.
+      parameters:
+        - $ref: "#/components/parameters/TaskId"
+      responses:
+        "200":
+          description: Task deleted.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeleteMessageResponse"
+        "404":
+          description: Task does not exist.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/tasks/{task_id}/status:
+    patch:
+      tags: [Tasks]
+      summary: Update task status
+      description: Updates only the status field of a task.
+      parameters:
+        - $ref: "#/components/parameters/TaskId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TaskStatusUpdateRequest"
+      responses:
+        "200":
+          description: Status updated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Task"
+        "400":
+          description: Missing or invalid status payload.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Task does not exist.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+components:
+  parameters:
+    TaskId:
+      name: task_id
+      in: path
+      required: true
+      description: Numeric ID of the task.
+      schema:
+        type: integer
+        minimum: 1
+
+  schemas:
+    # Reusable enum-like string schema for task status values.
+    TaskStatus:
+      type: string
+      enum: [pending, in_progress, completed]
+
+    # Reusable enum-like string schema for task priority values.
+    TaskPriority:
+      type: string
+      enum: [low, medium, high]
+
+    # Main API entity. The implementation always returns all keys;
+    # some values are nullable by design.
+    Task:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - title
+        - description
+        - status
+        - priority
+        - due_date
+        - estimated_minutes
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: integer
+          minimum: 1
+        title:
+          type: string
+          maxLength: 200
+        description:
+          type: string
+          nullable: true
+        status:
+          $ref: "#/components/schemas/TaskStatus"
+        priority:
+          $ref: "#/components/schemas/TaskPriority"
+        # ISO-8601 UTC/offset timestamp or null if no due date is set.
+        due_date:
+          type: string
+          format: date-time
+          nullable: true
+        # Integer minutes estimate; optional in input, nullable in stored output.
+        estimated_minutes:
+          type: integer
+          minimum: 1
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    TaskCreateRequest:
+      type: object
+      additionalProperties: false
+      required: [title]
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+        description:
+          type: string
+          nullable: true
+        status:
+          $ref: "#/components/schemas/TaskStatus"
+        priority:
+          $ref: "#/components/schemas/TaskPriority"
+        due_date:
+          type: string
+          format: date-time
+          nullable: true
+        estimated_minutes:
+          type: integer
+          minimum: 1
+          nullable: true
+
+    TaskUpdateRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+        description:
+          type: string
+          nullable: true
+        status:
+          $ref: "#/components/schemas/TaskStatus"
+        priority:
+          $ref: "#/components/schemas/TaskPriority"
+        due_date:
+          type: string
+          format: date-time
+          nullable: true
+        estimated_minutes:
+          type: integer
+          minimum: 1
+          nullable: true
+
+    TaskStatusUpdateRequest:
+      type: object
+      additionalProperties: false
+      required: [status]
+      properties:
+        status:
+          $ref: "#/components/schemas/TaskStatus"
+
+    TaskListResponse:
+      type: object
+      additionalProperties: false
+      required: [tasks, count]
+      properties:
+        tasks:
+          type: array
+          items:
+            $ref: "#/components/schemas/Task"
+        count:
+          type: integer
+          minimum: 0
+
+    HealthResponse:
+      type: object
+      additionalProperties: false
+      required: [status, environment, version]
+      properties:
+        status:
+          type: string
+          example: healthy
+        environment:
+          type: string
+          example: dev
+        version:
+          type: string
+          example: abc1234
+
+    ErrorResponse:
+      type: object
+      additionalProperties: false
+      required: [error]
+      properties:
+        error:
+          type: string
+
+    DeleteMessageResponse:
+      type: object
+      additionalProperties: false
+      required: [message]
+      properties:
+        message:
+          type: string
