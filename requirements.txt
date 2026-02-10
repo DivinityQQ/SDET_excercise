@@ -8,6 +8,9 @@ gunicorn>=22.0.0
 pytest>=8.0.0
 pytest-html>=4.1.1
 requests>=2.31.0
+pyyaml>=6.0.0
+openapi-spec-validator>=0.7.1
+jsonschema>=4.23.0
 
 # Testing - UI (Playwright)
 playwright>=1.49.0
