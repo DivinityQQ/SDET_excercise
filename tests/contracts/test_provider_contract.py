@@ -166,7 +166,7 @@ class TestOpenApiContractFile:
         openapi_spec = _load_openapi_spec()
 
         # Act / Assert
-        openapi_spec_validator.validate_spec(openapi_spec)
+        openapi_spec_validator.validate(openapi_spec)
 
 
 class TestProviderResponsesMatchContract:
