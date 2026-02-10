@@ -29,6 +29,8 @@ openapi_spec_validator = pytest.importorskip(
     reason="Install openapi-spec-validator for contract tests.",
 )
 
+pytestmark = pytest.mark.contract
+
 
 def _contract_path() -> Path:
     """Return the OpenAPI contract file path."""
@@ -270,4 +272,3 @@ class TestProviderResponsesMatchContract:
             method="get",
             status_code=404,
         )
-
