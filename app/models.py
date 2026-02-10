@@ -72,6 +72,22 @@ class Task(db.Model):
         onupdate=lambda: datetime.now(timezone.utc)
     )
 
+    @staticmethod
+    def _to_utc_iso(value: datetime | None) -> str | None:
+        """
+        Convert datetime to an ISO-8601 UTC string.
+
+        SQLite commonly returns naive datetime values even when timezone-aware
+        columns are declared. For API contracts, always normalize to UTC.
+        """
+        if value is None:
+            return None
+        if value.tzinfo is None:
+            value = value.replace(tzinfo=timezone.utc)
+        else:
+            value = value.astimezone(timezone.utc)
+        return value.isoformat()
+
     def to_dict(self) -> dict[str, Any]:
         """
         Convert the task to a dictionary representation.
@@ -85,10 +101,10 @@ class Task(db.Model):
             "description": self.description,
             "status": self.status,
             "priority": self.priority,
-            "due_date": self.due_date.isoformat() if self.due_date else None,
+            "due_date": self._to_utc_iso(self.due_date),
             "estimated_minutes": self.estimated_minutes,
-            "created_at": self.created_at.isoformat(),
-            "updated_at": self.updated_at.isoformat(),
+            "created_at": self._to_utc_iso(self.created_at),
+            "updated_at": self._to_utc_iso(self.updated_at),
         }
 
     def __repr__(self) -> str:
