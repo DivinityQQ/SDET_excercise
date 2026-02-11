@@ -1,76 +1,149 @@
-# SDET Exercise - Microservices Edition
+# SDET Exercise — Microservices Edition
 
 A task management application used to practice SDET workflows in a microservices architecture.
 
 ## Architecture
 
-- Gateway: `http://localhost:5000`
-- Auth service: `http://localhost:5010` (internal container port `5000`)
-- Task service: `http://localhost:5020` (internal container port `5000`)
-
-Request flow:
-
-```text
-Client -> Gateway (/api/auth/*, /api/tasks/*, /)
-       -> Auth Service (JWT issue/verify)
-       -> Task Service (task CRUD + web UI)
+```
+                     ┌──────────────┐
+   Client ────────►  │   Gateway    │  :5000
+                     └──────┬───────┘
+                      ┌─────┴──────┐
+                      │            │
+                ┌─────▼────┐ ┌────▼─────┐
+                │   Auth   │ │  Tasks   │
+                │ Service  │ │ Service  │
+                │  :5010   │ │  :5020   │
+                └──────────┘ └──────────┘
 ```
 
-## Repository Layout
+| Service | Location | External Port | Role |
+|---------|----------|---------------|------|
+| Gateway | `gateway/` | 5000 | HTTP reverse proxy — routes requests to backend services |
+| Auth | `services/auth/` | 5010 | User registration, login, JWT token issuance and verification |
+| Tasks | `services/tasks/` | 5020 | Task CRUD API and web UI (login, register, task management pages) |
 
-```text
-gateway/
-services/
-  auth/
-  tasks/
-shared/               # test-only helpers
-contracts/
-  auth_openapi.yaml
-  tasks_openapi.yaml
-  jwt_contract.yaml
-tests/
-  cross_service/
-  e2e/
-  smoke/
-  mocks/
-```
+### Routing
+
+The gateway routes requests by URL prefix:
+
+| Pattern | Destination |
+|---------|-------------|
+| `/api/auth/*` | Auth service |
+| `/api/tasks/*` | Task service |
+| `/*` (everything else) | Task service (web UI) |
+
+### Authentication
+
+Authentication uses **HS256 JWT tokens** with a shared secret across services:
+
+1. User registers or logs in via the Auth service
+2. Auth service returns a JWT (24h expiry) containing `user_id`, `username`, `iat`, `exp`
+3. Client sends `Authorization: Bearer <token>` on subsequent requests
+4. Task service verifies the token using the shared `JWT_SECRET_KEY`
+5. All task queries are filtered by `user_id` from the token — full tenant isolation
+
+## Prerequisites
+
+- Python 3.13+
+- Docker and Docker Compose
 
 ## Setup
 
 ```bash
 python -m venv venv
-venv\\Scripts\\activate  # Windows
+venv\Scripts\activate        # Windows
+# source venv/bin/activate   # Linux/macOS
 pip install -r requirements.txt
 pip install -r requirements-dev.txt
 playwright install chromium
 ```
 
-## Run Locally with Docker Compose
+## Running the Stack
+
+Start all services:
 
 ```bash
 docker compose up -d --build
-docker compose ps
+```
+
+Verify everything is healthy:
+
+```bash
 curl http://localhost:5000/api/health
 curl http://localhost:5000/api/auth/health
 ```
 
-Stop and clean volumes:
+Stop and clean up:
 
 ```bash
 docker compose down -v --remove-orphans
 ```
 
-You can also use:
+There is also a helper script:
 
 ```bash
-./scripts/deploy-local.sh up
-./scripts/deploy-local.sh health
-./scripts/deploy-local.sh down
+./scripts/deploy-local.sh up       # start
+./scripts/deploy-local.sh health   # check gateway + auth health
+./scripts/deploy-local.sh ps       # show running containers
+./scripts/deploy-local.sh logs     # tail logs
+./scripts/deploy-local.sh down     # stop and remove volumes
 ```
 
-## Test Commands
+## API Reference
 
-Per-service suites:
+### Auth endpoints
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| `POST` | `/api/auth/register` | No | Register a new user |
+| `POST` | `/api/auth/login` | No | Log in and receive a JWT |
+| `GET` | `/api/auth/verify` | Yes | Verify a bearer token |
+| `GET` | `/api/auth/health` | No | Health check |
+
+### Task endpoints
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| `GET` | `/api/tasks` | Yes | List tasks (supports `?status=`, `?priority=`, `?sort=`, `?order=`) |
+| `POST` | `/api/tasks` | Yes | Create a task |
+| `GET` | `/api/tasks/{id}` | Yes | Get a single task |
+| `PUT` | `/api/tasks/{id}` | Yes | Update a task |
+| `DELETE` | `/api/tasks/{id}` | Yes | Delete a task |
+| `PATCH` | `/api/tasks/{id}/status` | Yes | Update task status only |
+| `GET` | `/api/health` | No | Health check |
+
+### Quick walkthrough
+
+```bash
+# Register
+curl -s -X POST http://localhost:5000/api/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{"username": "alice", "email": "alice@example.com", "password": "secret123"}'
+
+# Login (save the token)
+TOKEN=$(curl -s -X POST http://localhost:5000/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username": "alice", "password": "secret123"}' | python -c "import sys,json; print(json.load(sys.stdin)['token'])")
+
+# Create a task
+curl -s -X POST http://localhost:5000/api/tasks \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $TOKEN" \
+  -d '{"title": "Write tests", "priority": "high"}'
+
+# List tasks
+curl -s http://localhost:5000/api/tasks \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+## Testing
+
+Tests are organized in layers, from fast/isolated to slow/integrated:
+
+### Per-service tests (no running services needed)
+
+Each service has its own unit, integration, and contract tests that run in-process using Flask's test client:
 
 ```bash
 cd services/auth && PYTHONPATH=../.. pytest tests -v
@@ -78,36 +151,116 @@ cd services/tasks && PYTHONPATH=../.. pytest tests -v
 cd gateway && PYTHONPATH=.. pytest tests -v
 ```
 
-Cross-service and shared suites (repo root):
+### Cross-service tests (no running services needed)
+
+These spin up both Flask apps in-process via test fixtures and verify flows like register → login → create task, JWT contract validation, and tenant isolation:
 
 ```bash
 PYTHONPATH=. pytest tests/cross_service -v
-PYTHONPATH=. pytest tests/mocks -v
 ```
 
-Smoke tests (requires running stack):
+### Smoke tests (requires running stack)
+
+Hit the gateway over HTTP to verify health and critical paths:
 
 ```bash
 TEST_BASE_URL=http://localhost:5000 pytest tests/smoke -v
 ```
 
-E2E tests:
+### E2E tests (requires running stack)
 
-- If `TEST_BASE_URL` is set, tests run against that stack.
-- If not set, tests try to start `docker-compose.test.yml` automatically.
+Playwright browser tests against the real web UI. If `TEST_BASE_URL` is set, tests run against that stack. Otherwise, they auto-start `docker-compose.test.yml`:
 
 ```bash
 pytest tests/e2e -v --browser chromium
 ```
 
+## Repository Layout
+
+```
+gateway/                          API gateway (Flask reverse proxy)
+  gateway_app/
+    routes.py                     Proxy routing logic
+  config.py                       Gateway configuration
+  Dockerfile
+services/
+  auth/                           Auth service
+    auth_app/
+      jwt.py                      JWT token creation
+      models.py                   User model
+      routes/api.py               Auth endpoints
+    config.py
+    Dockerfile
+    tests/                        Unit, integration, contract tests
+  tasks/                          Task service
+    task_app/
+      auth.py                     JWT verification decorator
+      models.py                   Task model + enums
+      routes/
+        api.py                    REST API endpoints
+        views.py                  HTML form routes
+      templates/                  Jinja2 templates (login, register, tasks)
+      static/                     CSS/JS assets
+    config.py
+    Dockerfile
+    tests/                        Unit, integration, contract tests
+shared/                           Test-only shared utilities
+contracts/
+  auth_openapi.yaml               Auth service OpenAPI spec
+  tasks_openapi.yaml              Task service OpenAPI spec
+  jwt_contract.yaml               JWT claims and algorithm contract
+tests/
+  cross_service/                  Auth + Task integration tests
+  e2e/                            Playwright browser tests
+    pages/                        Page object models
+  smoke/                          Gateway smoke tests
+  mocks/                          Mock/fixture tests
+docker-compose.yml                Production/development stack
+docker-compose.test.yml           Test stack (isolated databases)
+.env.example                      Environment variable template
+.github/workflows/                CI/CD pipelines
+```
+
 ## Contracts
 
-- `contracts/auth_openapi.yaml`: Auth service contract
-- `contracts/tasks_openapi.yaml`: Task service contract
-- `contracts/jwt_contract.yaml`: shared JWT claims/algorithm contract
+API contracts live in `contracts/`:
 
-Contract tests live under each service plus `tests/cross_service/test_jwt_contract.py`.
+- `auth_openapi.yaml` — Auth service OpenAPI spec
+- `tasks_openapi.yaml` — Task service OpenAPI spec
+- `jwt_contract.yaml` — Shared JWT claims and algorithm contract
+
+Contract tests are in each service's `tests/contracts/` directory and in `tests/cross_service/test_jwt_contract.py`.
+
+## CI/CD
+
+Four GitHub Actions workflows in `.github/workflows/`:
+
+| Workflow | Trigger | What it does |
+|----------|---------|--------------|
+| `pr.yml` | Pull requests to main | Lint + per-service tests + cross-service + smoke (only for changed services via path-based detection) |
+| `main.yml` | Push to main | Build full stack, health checks, smoke tests |
+| `release.yml` | Tag push | Build and push Docker images to GHCR, staging E2E, production smoke |
+| `pr-nightly.yml` | Scheduled (nightly) | Full regression: all unit + cross-service + E2E tests |
+
+PR checks use `dorny/paths-filter` so that changing files in `services/auth/` only triggers auth-tests and cross-service-tests, not the entire suite. The nightly run covers everything unconditionally as a safety net.
+
+## Environment Variables
+
+All configurable via environment or `.env` (see `.env.example`):
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `JWT_SECRET_KEY` | `dev-jwt-secret-change-in-production` | Shared signing key for JWT tokens |
+| `JWT_EXPIRY_HOURS` | `24` | Token lifetime in hours |
+| `JWT_CLOCK_SKEW_SECONDS` | `30` | Allowed clock drift for token verification |
+| `AUTH_SERVICE_URL` | `http://auth-service:5000` | Auth service base URL (used by task service and gateway) |
+| `AUTH_SERVICE_TIMEOUT` | `5` | Timeout in seconds for auth service calls |
+| `TASK_SERVICE_URL` | `http://task-service:5000` | Task service base URL (used by gateway) |
+| `PROXY_TIMEOUT` | `10` | Gateway proxy timeout in seconds |
+| `DATABASE_URL` | `sqlite:///instance/<service>.db` | SQLAlchemy database URI |
+| `TEST_BASE_URL` | `http://localhost:5000` | Base URL for smoke and E2E tests |
+| `E2E_COMPOSE_FILE` | `docker-compose.test.yml` | Compose file used by E2E test fixtures |
 
 ## Baseline Tag
 
-The monolith baseline is preserved as Git tag `v1-monolith` for before/after comparison.
+The original monolith codebase is preserved as Git tag `v1-monolith` for before/after comparison.
