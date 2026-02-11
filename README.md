@@ -6,13 +6,16 @@ A task management application built to demonstrate Software Development Engineer
 
 - **Flask web app** - Simple task manager with CRUD operations
 - **REST API** - JSON endpoints for task management
-- **Test suites** - Unit, integration, E2E, smoke, and mock tests
+- **Test suites** - Unit, integration, contract, E2E, smoke, and mock tests
 - **Docker runtime** - Gunicorn-based container build
 - **CI/CD pipelines** - PR checks, dev deploy, and release workflow
 
 ## Project structure
 
 ```
+contracts/
+└── openapi.yaml        # OpenAPI 3.0.3 API contract
+
 app/
 ├── models.py           # SQLAlchemy Task model
 ├── routes/
@@ -26,6 +29,7 @@ tests/
 ├── integration/        # API integration tests
 ├── e2e/                # Playwright browser tests
 │   └── pages/          # Page Object Model classes
+├── contracts/          # Provider contract tests
 ├── smoke/              # Post-deploy health checks
 └── mocks/              # Mock/unit tests
 
@@ -115,6 +119,9 @@ pytest -m smoke -v
 # Non-browser smoke tests
 pytest -m "smoke and not e2e" -v
 
+# Contract tests (API shape validation)
+pytest -m contract -v
+
 # E2E smoke only (fast PR signal)
 pytest -m "e2e and smoke" -v
 
@@ -129,6 +136,7 @@ pytest -m "not slow" -v
 | `integration` | Tests requiring Flask test client (API tests) |
 | `e2e` | End-to-end browser tests using Playwright |
 | `smoke` | Critical path verification for deployment health |
+| `contract` | API contract validation against OpenAPI spec |
 | `slow` | Tests taking longer than 5 seconds |
 
 ### With coverage
@@ -147,7 +155,7 @@ ruff check . --fix  # auto-fix issues
 GitHub Actions simulates a multi-stage pipeline:
 
 - **PR Checks** (`.github/workflows/pr.yml`)
-  - Lint, unit tests, integration tests
+  - Lint, unit tests, integration tests, contract tests
   - UI smoke tests only (fast signal)
 - **Dev Deployment** (`.github/workflows/main.yml`)
   - Build/push dev image
