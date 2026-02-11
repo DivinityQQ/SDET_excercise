@@ -1,16 +1,17 @@
+name: taskapp-test
+
 services:
   auth-service:
     build:
       context: .
       dockerfile: services/auth/Dockerfile
-    ports:
-      - "5010:5000"
     environment:
-      - FLASK_ENV=production
+      - FLASK_ENV=testing
       - JWT_SECRET_KEY=dev-jwt-secret-change-in-production
-      - DATABASE_URL=sqlite:///instance/auth.db
-      - ENVIRONMENT=dev
-    container_name: auth-service
+      - DATABASE_URL=sqlite:///instance/auth_test.db
+      - ENVIRONMENT=test
+    volumes:
+      - auth-test-data:/app/instance
     healthcheck:
       test:
         [
@@ -23,22 +24,21 @@ services:
       timeout: 3s
       retries: 5
     networks:
-      - taskapp-net
+      - taskapp-test-net
 
   task-service:
     build:
       context: .
       dockerfile: services/tasks/Dockerfile
-    ports:
-      - "5020:5000"
     environment:
-      - FLASK_ENV=production
+      - FLASK_ENV=testing
       - JWT_SECRET_KEY=dev-jwt-secret-change-in-production
-      - DATABASE_URL=sqlite:///instance/tasks.db
+      - DATABASE_URL=sqlite:///instance/tasks_test.db
       - AUTH_SERVICE_URL=http://auth-service:5000
-      - AUTH_SERVICE_TIMEOUT=5
-      - ENVIRONMENT=dev
-    container_name: task-service
+      - AUTH_SERVICE_TIMEOUT=3
+      - ENVIRONMENT=test
+    volumes:
+      - task-test-data:/app/instance
     healthcheck:
       test:
         [
@@ -51,7 +51,7 @@ services:
       timeout: 3s
       retries: 5
     networks:
-      - taskapp-net
+      - taskapp-test-net
 
   gateway:
     build:
@@ -60,20 +60,23 @@ services:
     ports:
       - "5000:5000"
     environment:
-      - FLASK_ENV=production
+      - FLASK_ENV=testing
       - AUTH_SERVICE_URL=http://auth-service:5000
       - TASK_SERVICE_URL=http://task-service:5000
       - PROXY_TIMEOUT=10
-    container_name: gateway
     depends_on:
       auth-service:
         condition: service_healthy
       task-service:
         condition: service_healthy
     networks:
-      - taskapp-net
+      - taskapp-test-net
 
 networks:
-  taskapp-net:
+  taskapp-test-net:
     driver: bridge
+
+volumes:
+  auth-test-data:
+  task-test-data:
 
