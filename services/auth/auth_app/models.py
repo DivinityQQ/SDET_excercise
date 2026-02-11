@@ -7,7 +7,7 @@ from typing import Any
 
 from werkzeug.security import check_password_hash, generate_password_hash
 
-from auth_app import db
+from . import db
 
 
 class User(db.Model):
@@ -60,4 +60,3 @@ class User(db.Model):
 
     def __repr__(self) -> str:
         return f"<User {self.id}: {self.username}>"
-

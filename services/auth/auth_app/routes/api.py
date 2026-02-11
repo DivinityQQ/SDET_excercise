@@ -9,9 +9,9 @@ import jwt as pyjwt
 from flask import Blueprint, Response, current_app, jsonify, request
 from sqlalchemy import select
 
-from auth_app import db
-from auth_app.jwt import create_token
-from auth_app.models import User
+from .. import db
+from ..jwt import create_token
+from ..models import User
 
 api_bp = Blueprint("auth_api", __name__)
 
@@ -133,4 +133,3 @@ def verify() -> tuple[Response, int]:
         return _json_error("Invalid or expired token", 401)
 
     return jsonify({"user_id": payload["user_id"], "username": payload["username"]}), 200
-

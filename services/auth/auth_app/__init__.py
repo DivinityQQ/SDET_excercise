@@ -35,7 +35,7 @@ def create_app(config_name: str | None = None) -> Flask:
 
     db.init_app(app)
 
-    from auth_app.routes.api import api_bp
+    from .routes.api import api_bp
 
     app.register_blueprint(api_bp, url_prefix="/api/auth")
 
@@ -44,4 +44,3 @@ def create_app(config_name: str | None = None) -> Flask:
         logger.info("Auth service database tables created")
 
     return app
-

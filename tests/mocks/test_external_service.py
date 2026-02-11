@@ -377,3 +377,44 @@ class TestVerifyingCalls:
         # Assert
         mock_service.send_email.assert_not_called()
         mock_service.send_sms.assert_not_called()
+
+
+def _call_auth_service_login(auth_base_url: str, username: str, password: str, timeout: int = 5) -> dict:
+    """Example helper showing how task views can call auth-service over HTTP."""
+    import requests
+
+    response = requests.post(
+        f"{auth_base_url}/api/auth/login",
+        json={"username": username, "password": password},
+        timeout=timeout,
+    )
+    response.raise_for_status()
+    return response.json()
+
+
+class TestMockAuthServiceCalls:
+    """Examples for mocking auth-service calls from another service."""
+
+    @patch("requests.post")
+    def test_mock_auth_login_http_call(self, mock_post):
+        mock_response = MagicMock()
+        mock_response.json.return_value = {
+            "token": "jwt-token",
+            "user": {"id": 1, "username": "demo"},
+        }
+        mock_response.raise_for_status.return_value = None
+        mock_post.return_value = mock_response
+
+        result = _call_auth_service_login(
+            auth_base_url="http://auth-service:5000",
+            username="demo",
+            password="secret",
+            timeout=3,
+        )
+
+        assert result["token"] == "jwt-token"
+        mock_post.assert_called_once_with(
+            "http://auth-service:5000/api/auth/login",
+            json={"username": "demo", "password": "secret"},
+            timeout=3,
+        )

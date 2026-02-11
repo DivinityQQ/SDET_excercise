@@ -9,9 +9,9 @@ from datetime import datetime, timezone
 from flask import Blueprint, Response, g, jsonify, request
 from sqlalchemy import select
 
-from task_app import db
-from task_app.auth import require_auth
-from task_app.models import Task, TaskPriority, TaskStatus
+from .. import db
+from ..auth import require_auth
+from ..models import Task, TaskPriority, TaskStatus
 
 logger = logging.getLogger(__name__)
 
@@ -231,4 +231,3 @@ def not_found(_: Exception) -> tuple[Response, int]:
 def internal_error(error: Exception) -> tuple[Response, int]:
     logger.error("Internal server error: %s", error)
     return jsonify({"error": "Internal server error"}), 500
-

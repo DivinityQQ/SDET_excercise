@@ -35,8 +35,8 @@ def create_app(config_name: str | None = None) -> Flask:
 
     db.init_app(app)
 
-    from task_app.routes.api import api_bp
-    from task_app.routes.views import views_bp
+    from .routes.api import api_bp
+    from .routes.views import views_bp
 
     app.register_blueprint(api_bp, url_prefix="/api")
     app.register_blueprint(views_bp)
@@ -46,4 +46,3 @@ def create_app(config_name: str | None = None) -> Flask:
         logger.info("Task service database tables created")
 
     return app
-

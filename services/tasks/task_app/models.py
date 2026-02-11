@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 from enum import Enum
 from typing import Any
 
-from task_app import db
+from . import db
 
 
 class TaskStatus(str, Enum):
@@ -80,4 +80,3 @@ class Task(db.Model):
 
     def __repr__(self) -> str:
         return f"<Task {self.id}: {self.title}>"
-

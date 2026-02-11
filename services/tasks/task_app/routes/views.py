@@ -8,8 +8,8 @@ from datetime import datetime, timezone
 from flask import Blueprint, abort, flash, redirect, render_template, request, session, url_for
 from sqlalchemy import select
 
-from task_app import db
-from task_app.models import Task, TaskPriority, TaskStatus
+from .. import db
+from ..models import Task, TaskPriority, TaskStatus
 
 logger = logging.getLogger(__name__)
 
@@ -204,4 +204,3 @@ def update_status(task_id: int):
     else:
         flash("Invalid status", "error")
     return redirect(url_for("views.index"))
-
