@@ -1,82 +1,44 @@
-name: Dev Deployment
+name: Main Deploy Check
 
 on:
   push:
     branches: [main]
 
-env:
-  REGISTRY: ghcr.io
-
 jobs:
-  deploy-dev:
+  build-deploy-smoke:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
     steps:
       - uses: actions/checkout@v4
+
+      - name: Build and start stack
+        run: docker compose -f docker-compose.yml up -d --build
+
+      - name: Wait for health checks
+        run: |
+          for i in {1..45}; do
+            if curl -sf http://localhost:5000/api/health > /dev/null && curl -sf http://localhost:5000/api/auth/health > /dev/null; then
+              exit 0
+            fi
+            sleep 2
+          done
+          docker compose -f docker-compose.yml logs
+          exit 1
 
       - uses: actions/setup-python@v5
         with:
           python-version: "3.13"
 
-      - name: Set image vars
-        run: |
-          echo "IMAGE_NAME=${GITHUB_REPOSITORY,,}" >> $GITHUB_ENV
-          echo "SHORT_SHA=${GITHUB_SHA::7}" >> $GITHUB_ENV
-          echo "IMAGE=${REGISTRY}/${GITHUB_REPOSITORY,,}" >> $GITHUB_ENV
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Build and push dev image
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          push: true
-          load: true
-          tags: |
-            ${{ env.IMAGE }}:dev
-            ${{ env.IMAGE }}:sha-${{ env.SHORT_SHA }}
-
-      - name: Deploy dev container
-        run: |
-          docker run -d --name taskapp-dev \
-            -p 5001:5000 \
-            -e FLASK_ENV=development \
-            -e ENVIRONMENT=dev \
-            -e APP_VERSION=${GITHUB_SHA} \
-            ${{ env.IMAGE }}:dev
-
-      - name: Wait for health
-        run: |
-          for i in {1..20}; do
-            if curl -sf http://localhost:5001/api/health > /dev/null; then
-              exit 0
-            fi
-            sleep 2
-          done
-          echo "Dev health check failed"
-          docker logs taskapp-dev
-          exit 1
-
       - name: Install test dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          pip install -r requirements-dev.txt
 
-      - name: Run smoke tests against DEV
+      - name: Run smoke tests via gateway
         env:
-          TEST_BASE_URL: http://localhost:5001
-        run: pytest -m "smoke and not e2e" -v
+          TEST_BASE_URL: http://localhost:5000
+        run: pytest tests/smoke -v
 
-      - name: Cleanup dev container
+      - name: Teardown
         if: always()
-        run: docker rm -f taskapp-dev
+        run: docker compose -f docker-compose.yml down -v --remove-orphans
+

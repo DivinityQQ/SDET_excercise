@@ -9,215 +9,94 @@ env:
   REGISTRY: ghcr.io
 
 jobs:
-  build:
+  build-and-push-images:
     runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
+    strategy:
+      matrix:
+        include:
+          - name: auth-service
+            dockerfile: services/auth/Dockerfile
+            image_suffix: auth-service
+          - name: task-service
+            dockerfile: services/tasks/Dockerfile
+            image_suffix: task-service
+          - name: gateway
+            dockerfile: gateway/Dockerfile
+            image_suffix: gateway
     steps:
       - uses: actions/checkout@v4
-
-      - name: Set image vars
-        run: |
-          echo "IMAGE_NAME=${GITHUB_REPOSITORY,,}" >> $GITHUB_ENV
-          echo "IMAGE=${REGISTRY}/${GITHUB_REPOSITORY,,}" >> $GITHUB_ENV
-          echo "VERSION=${GITHUB_REF_NAME}" >> $GITHUB_ENV
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Build and push release image
+      - name: Set image metadata
+        run: |
+          echo "IMAGE=${REGISTRY}/${GITHUB_REPOSITORY,,}-${{ matrix.image_suffix }}" >> $GITHUB_ENV
+          echo "VERSION=${GITHUB_REF_NAME}" >> $GITHUB_ENV
+      - name: Build and push
         uses: docker/build-push-action@v5
         with:
           context: .
+          file: ${{ matrix.dockerfile }}
           push: true
           tags: |
             ${{ env.IMAGE }}:${{ env.VERSION }}
             ${{ env.IMAGE }}:latest
 
-  deploy-staging:
-    needs: build
+  staging-e2e:
+    needs: build-and-push-images
     runs-on: ubuntu-latest
     environment: staging
-    permissions:
-      contents: read
-      packages: read
     steps:
-      - name: Set image vars
+      - uses: actions/checkout@v4
+      - run: docker compose -f docker-compose.yml up -d --build
+      - name: Wait for health checks
         run: |
-          echo "IMAGE_NAME=${GITHUB_REPOSITORY,,}" >> $GITHUB_ENV
-          echo "IMAGE=${REGISTRY}/${GITHUB_REPOSITORY,,}" >> $GITHUB_ENV
-          echo "VERSION=${GITHUB_REF_NAME}" >> $GITHUB_ENV
-
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Deploy to staging (simulated)
-        run: |
-          docker pull ${{ env.IMAGE }}:${{ env.VERSION }}
-          docker run -d --name taskapp-staging \
-            -p 5002:5000 \
-            -e FLASK_ENV=production \
-            -e ENVIRONMENT=staging \
-            -e APP_VERSION=${{ env.VERSION }} \
-            ${{ env.IMAGE }}:${{ env.VERSION }}
-
-      - name: Wait for health
-        run: |
-          for i in {1..20}; do
-            if curl -sf http://localhost:5002/api/health > /dev/null; then
+          for i in {1..45}; do
+            if curl -sf http://localhost:5000/api/health > /dev/null && curl -sf http://localhost:5000/api/auth/health > /dev/null; then
               exit 0
             fi
             sleep 2
           done
-          echo "Staging health check failed"
-          docker logs taskapp-staging
+          docker compose -f docker-compose.yml logs
           exit 1
-
-      - name: Cleanup staging container
-        if: always()
-        run: docker rm -f taskapp-staging
-
-  e2e-tests:
-    needs: deploy-staging
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: read
-    steps:
-      - uses: actions/checkout@v4
-
       - uses: actions/setup-python@v5
         with:
           python-version: "3.13"
+      - run: python -m pip install --upgrade pip
+      - run: pip install -r requirements-dev.txt
+      - run: TEST_BASE_URL=http://localhost:5000 pytest tests/smoke -v
+      - if: always()
+        run: docker compose -f docker-compose.yml down -v --remove-orphans
 
-      - name: Set image vars
-        run: |
-          echo "IMAGE_NAME=${GITHUB_REPOSITORY,,}" >> $GITHUB_ENV
-          echo "IMAGE=${REGISTRY}/${GITHUB_REPOSITORY,,}" >> $GITHUB_ENV
-          echo "VERSION=${GITHUB_REF_NAME}" >> $GITHUB_ENV
-
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Start staging container for tests
-        run: |
-          docker pull ${{ env.IMAGE }}:${{ env.VERSION }}
-          docker run -d --name taskapp-staging \
-            -p 5002:5000 \
-            -e FLASK_ENV=production \
-            -e ENVIRONMENT=staging \
-            -e APP_VERSION=${{ env.VERSION }} \
-            ${{ env.IMAGE }}:${{ env.VERSION }}
-
-      - name: Wait for health
-        run: |
-          for i in {1..20}; do
-            if curl -sf http://localhost:5002/api/health > /dev/null; then
-              exit 0
-            fi
-            sleep 2
-          done
-          echo "Staging health check failed"
-          docker logs taskapp-staging
-          exit 1
-
-      - name: Install test dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-          playwright install --with-deps chromium
-
-      - name: Run E2E tests against staging
-        env:
-          TEST_BASE_URL: http://localhost:5002
-        run: pytest -m "e2e and not slow" -v --browser chromium
-
-      - name: Cleanup staging container
-        if: always()
-        run: docker rm -f taskapp-staging
-
-  deploy-prod:
-    needs: e2e-tests
+  production-smoke:
+    needs: staging-e2e
     runs-on: ubuntu-latest
     environment: production
     steps:
-      - name: Deploy to production (approval gate)
-        run: echo "Production deployment approved"
-
-  smoke-tests:
-    needs: deploy-prod
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: read
-    steps:
       - uses: actions/checkout@v4
-
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.13"
-
-      - name: Set image vars
+      - run: docker compose -f docker-compose.yml up -d --build
+      - name: Wait for health checks
         run: |
-          echo "IMAGE_NAME=${GITHUB_REPOSITORY,,}" >> $GITHUB_ENV
-          echo "IMAGE=${REGISTRY}/${GITHUB_REPOSITORY,,}" >> $GITHUB_ENV
-          echo "VERSION=${GITHUB_REF_NAME}" >> $GITHUB_ENV
-
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Start prod container for smoke tests
-        run: |
-          docker pull ${{ env.IMAGE }}:${{ env.VERSION }}
-          docker run -d --name taskapp-prod \
-            -p 5003:5000 \
-            -e FLASK_ENV=production \
-            -e ENVIRONMENT=prod \
-            -e APP_VERSION=${{ env.VERSION }} \
-            ${{ env.IMAGE }}:${{ env.VERSION }}
-
-      - name: Wait for health
-        run: |
-          for i in {1..20}; do
-            if curl -sf http://localhost:5003/api/health > /dev/null; then
+          for i in {1..45}; do
+            if curl -sf http://localhost:5000/api/health > /dev/null && curl -sf http://localhost:5000/api/auth/health > /dev/null; then
               exit 0
             fi
             sleep 2
           done
-          echo "Prod health check failed"
-          docker logs taskapp-prod
+          docker compose -f docker-compose.yml logs
           exit 1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - run: python -m pip install --upgrade pip
+      - run: pip install -r requirements-dev.txt
+      - run: TEST_BASE_URL=http://localhost:5000 pytest tests/smoke -v
+      - if: always()
+        run: docker compose -f docker-compose.yml down -v --remove-orphans
 
-      - name: Install test dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-
-      - name: Run smoke tests against PROD
-        env:
-          TEST_BASE_URL: http://localhost:5003
-        run: pytest -m smoke -v
-
-      - name: Cleanup prod container
-        if: always()
-        run: docker rm -f taskapp-prod
