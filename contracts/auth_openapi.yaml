@@ -1,0 +1,215 @@
+openapi: 3.0.3
+
+info:
+  title: Auth Service API
+  version: 1.0.0
+  description: Contract for auth-service endpoints.
+
+tags:
+  - name: Auth
+    description: Authentication and identity endpoints.
+
+paths:
+  /api/auth/health:
+    get:
+      tags: [Auth]
+      summary: Auth health check
+      responses:
+        "200":
+          description: Service is healthy.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthHealthResponse"
+
+  /api/auth/register:
+    post:
+      tags: [Auth]
+      summary: Register user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterRequest"
+      responses:
+        "201":
+          description: User created.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RegisterResponse"
+        "400":
+          description: Validation error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Duplicate username/email.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/auth/login:
+    post:
+      tags: [Auth]
+      summary: Login and issue JWT
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+      responses:
+        "200":
+          description: Login successful.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LoginResponse"
+        "400":
+          description: Validation error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Invalid credentials.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/auth/verify:
+    get:
+      tags: [Auth]
+      summary: Verify bearer token
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Token is valid.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VerifyResponse"
+        "401":
+          description: Token missing/invalid.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    AuthHealthResponse:
+      type: object
+      additionalProperties: false
+      required: [status, service, environment]
+      properties:
+        status:
+          type: string
+          example: healthy
+        service:
+          type: string
+          example: auth
+        environment:
+          type: string
+
+    User:
+      type: object
+      additionalProperties: false
+      required: [id, username, email, created_at]
+      properties:
+        id:
+          type: integer
+          minimum: 1
+        username:
+          type: string
+          minLength: 1
+          maxLength: 80
+        email:
+          type: string
+          format: email
+          maxLength: 120
+        created_at:
+          type: string
+          format: date-time
+
+    RegisterRequest:
+      type: object
+      additionalProperties: false
+      required: [username, email, password]
+      properties:
+        username:
+          type: string
+          minLength: 1
+          maxLength: 80
+        email:
+          type: string
+          format: email
+          maxLength: 120
+        password:
+          type: string
+          minLength: 1
+
+    RegisterResponse:
+      type: object
+      additionalProperties: false
+      required: [user]
+      properties:
+        user:
+          $ref: "#/components/schemas/User"
+
+    LoginRequest:
+      type: object
+      additionalProperties: false
+      required: [username, password]
+      properties:
+        username:
+          type: string
+          minLength: 1
+          maxLength: 80
+        password:
+          type: string
+          minLength: 1
+
+    LoginResponse:
+      type: object
+      additionalProperties: false
+      required: [token, user]
+      properties:
+        token:
+          type: string
+          minLength: 1
+        user:
+          $ref: "#/components/schemas/User"
+
+    VerifyResponse:
+      type: object
+      additionalProperties: false
+      required: [user_id, username]
+      properties:
+        user_id:
+          type: integer
+          minimum: 1
+        username:
+          type: string
+          minLength: 1
+
+    ErrorResponse:
+      type: object
+      additionalProperties: false
+      required: [error]
+      properties:
+        error:
+          type: string
+
