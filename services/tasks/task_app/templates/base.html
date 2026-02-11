@@ -10,7 +10,21 @@
     <header>
         <nav data-testid="main-nav">
             <a href="{{ url_for('views.index') }}" data-testid="nav-home">Task Manager</a>
-            <a href="{{ url_for('views.new_task') }}" data-testid="nav-new-task">+ New Task</a>
+            {% if session.get("auth_token") %}
+                <a href="{{ url_for('views.new_task') }}" data-testid="nav-new-task">+ New Task</a>
+                <form method="POST"
+                      action="{{ url_for('views.logout') }}"
+                      class="inline-form"
+                      title="Clears session. Token remains valid until expiry."
+                      data-testid="logout-form">
+                    <button type="submit" class="btn btn-secondary" data-testid="logout-button">
+                        Logout
+                    </button>
+                </form>
+            {% else %}
+                <a href="{{ url_for('views.login') }}" data-testid="nav-login">Login</a>
+                <a href="{{ url_for('views.register') }}" data-testid="nav-register">Register</a>
+            {% endif %}
         </nav>
     </header>
 
