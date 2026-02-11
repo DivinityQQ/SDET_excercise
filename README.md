@@ -1,195 +1,113 @@
-# SDET Exercise
+# SDET Exercise - Microservices Edition
 
-A task management application built to demonstrate Software Development Engineer in Test (SDET) skills, including API testing, UI testing, mocking, and CI/CD pipelines.
+A task management application used to practice SDET workflows in a microservices architecture.
 
-## What's in this repo
+## Architecture
 
-- **Flask web app** - Simple task manager with CRUD operations
-- **REST API** - JSON endpoints for task management
-- **Test suites** - Unit, integration, contract, E2E, smoke, and mock tests
-- **Docker runtime** - Gunicorn-based container build
-- **CI/CD pipelines** - PR checks, dev deploy, and release workflow
+- Gateway: `http://localhost:5000`
+- Auth service: `http://localhost:5010` (internal container port `5000`)
+- Task service: `http://localhost:5020` (internal container port `5000`)
 
-## Project structure
+Request flow:
 
+```text
+Client -> Gateway (/api/auth/*, /api/tasks/*, /)
+       -> Auth Service (JWT issue/verify)
+       -> Task Service (task CRUD + web UI)
 ```
+
+## Repository Layout
+
+```text
+gateway/
+services/
+  auth/
+  tasks/
+shared/               # test-only helpers
 contracts/
-└── openapi.yaml        # OpenAPI 3.0.3 API contract
-
-app/
-├── models.py           # SQLAlchemy Task model
-├── routes/
-│   ├── api.py          # REST API endpoints
-│   └── views.py        # Web UI routes
-├── templates/          # Jinja2 HTML templates
-└── static/             # CSS styles
-
+  auth_openapi.yaml
+  tasks_openapi.yaml
+  jwt_contract.yaml
 tests/
-├── unit/               # Fast unit tests
-├── integration/        # API integration tests
-├── e2e/                # Playwright browser tests
-│   └── pages/          # Page Object Model classes
-├── contracts/          # Provider contract tests
-├── smoke/              # Post-deploy health checks
-└── mocks/              # Mock/unit tests
-
-Dockerfile              # Container build (gunicorn)
-docker-compose.yml      # Dev/Staging/Prod local envs
-wsgi.py                 # Gunicorn entrypoint
-scripts/
-└── deploy-local.sh      # Local deploy helper
+  cross_service/
+  e2e/
+  smoke/
+  mocks/
 ```
 
 ## Setup
 
-### Requirements
-
-- Python 3.13+
-- pip
-
-### Installation
-
 ```bash
-# Clone the repo
-git clone https://github.com/DivinityQQ/SDET_excercise.git
-cd SDET_excercise
-
-# Create virtual environment
 python -m venv venv
-venv\Scripts\activate  # Windows
-# source venv/bin/activate  # macOS/Linux
-
-# Install dependencies
+venv\\Scripts\\activate  # Windows
 pip install -r requirements.txt
-
-# Install Playwright browsers (for UI tests)
+pip install -r requirements-dev.txt
 playwright install chromium
 ```
 
-## Running the app (local)
+## Run Locally with Docker Compose
 
 ```bash
-flask run
+docker compose up -d --build
+docker compose ps
+curl http://localhost:5000/api/health
+curl http://localhost:5000/api/auth/health
 ```
 
-Visit http://127.0.0.1:5000
-
-## Docker environments (DEV/STAGING/PROD)
+Stop and clean volumes:
 
 ```bash
-# Start all three environments
-docker compose up -d
-
-# Or start a single environment
-docker compose up -d dev
-
-# Helper script
-./scripts/deploy-local.sh dev
+docker compose down -v --remove-orphans
 ```
 
-Health checks:
+You can also use:
 
 ```bash
-curl http://localhost:5001/api/health  # DEV
-curl http://localhost:5002/api/health  # STAGING
-curl http://localhost:5003/api/health  # PROD
+./scripts/deploy-local.sh up
+./scripts/deploy-local.sh health
+./scripts/deploy-local.sh down
 ```
 
-## Running tests
+## Test Commands
 
-### All tests
-```bash
-pytest
-```
-
-### By marker
-```bash
-# Unit tests (fast, isolated)
-pytest -m unit -v
-
-# Integration tests (API)
-pytest -m integration -v
-
-# E2E tests (Playwright browser)
-pytest -m e2e -v
-
-# Smoke tests (deployment health)
-pytest -m smoke -v
-
-# Non-browser smoke tests
-pytest -m "smoke and not e2e" -v
-
-# Contract tests (API shape validation)
-pytest -m contract -v
-
-# E2E smoke only (fast PR signal)
-pytest -m "e2e and smoke" -v
-
-# All tests except slow
-pytest -m "not slow" -v
-```
-
-### Available markers
-| Marker | Purpose |
-|--------|---------|
-| `unit` | Fast, isolated tests with no external dependencies |
-| `integration` | Tests requiring Flask test client (API tests) |
-| `e2e` | End-to-end browser tests using Playwright |
-| `smoke` | Critical path verification for deployment health |
-| `contract` | API contract validation against OpenAPI spec |
-| `slow` | Tests taking longer than 5 seconds |
-
-### With coverage
-```bash
-pytest tests/ --cov=app --cov-report=html:reports/coverage
-```
-
-### Linting
-```bash
-ruff check .
-ruff check . --fix  # auto-fix issues
-```
-
-## CI/CD
-
-GitHub Actions simulates a multi-stage pipeline:
-
-- **PR Checks** (`.github/workflows/pr.yml`)
-  - Lint, unit tests, integration tests, contract tests
-  - UI smoke tests only (fast signal)
-- **Dev Deployment** (`.github/workflows/main.yml`)
-  - Build/push dev image
-  - Run container on `:5001` and execute smoke tests
-- **Release Pipeline** (`.github/workflows/release.yml`)
-  - Tag `v*` builds/pushes image
-  - Deploy STAGING + E2E tests
-  - Manual approval gate for PROD
-  - Smoke tests against PROD
-
-### GitHub settings to enable approvals
-
-1. **Settings → Environments**: create `staging` and `production`
-2. **production**: enable *Required reviewers* for approval gate
-3. **Settings → Actions → General**: enable **Read and write permissions** for `GITHUB_TOKEN`
-
-### Local pipeline walkthrough
+Per-service suites:
 
 ```bash
-# Start all environments
-docker compose up -d
-
-# Check health
-curl http://localhost:5001/api/health
-curl http://localhost:5002/api/health
-curl http://localhost:5003/api/health
-
-# Tag a release to trigger release pipeline
-git tag v1.0.0
-git push origin v1.0.0
+cd services/auth && PYTHONPATH=../.. pytest tests -v
+cd services/tasks && PYTHONPATH=../.. pytest tests -v
+cd gateway && PYTHONPATH=.. pytest tests -v
 ```
 
-## VSCode setup
+Cross-service and shared suites (repo root):
 
-1. Install the **Python** extension
-2. Install the **Ruff** extension for linting
-3. Open the Testing panel to discover and run tests
+```bash
+PYTHONPATH=. pytest tests/cross_service -v
+PYTHONPATH=. pytest tests/mocks -v
+```
+
+Smoke tests (requires running stack):
+
+```bash
+TEST_BASE_URL=http://localhost:5000 pytest tests/smoke -v
+```
+
+E2E tests:
+
+- If `TEST_BASE_URL` is set, tests run against that stack.
+- If not set, tests try to start `docker-compose.test.yml` automatically.
+
+```bash
+pytest tests/e2e -v --browser chromium
+```
+
+## Contracts
+
+- `contracts/auth_openapi.yaml`: Auth service contract
+- `contracts/tasks_openapi.yaml`: Task service contract
+- `contracts/jwt_contract.yaml`: shared JWT claims/algorithm contract
+
+Contract tests live under each service plus `tests/cross_service/test_jwt_contract.py`.
+
+## Baseline Tag
+
+The monolith baseline is preserved as Git tag `v1-monolith` for before/after comparison.
