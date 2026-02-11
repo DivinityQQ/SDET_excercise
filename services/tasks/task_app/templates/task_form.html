@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+
+{% block title %}{{ form_title }} - Task Manager{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1 data-testid="form-title">{{ form_title }}</h1>
+
+    <form method="POST" action="{{ form_action }}" class="task-form" data-testid="task-form">
+        <!-- Title Field -->
+        <div class="form-group">
+            <label for="title" data-testid="title-label">
+                Title <span class="required">*</span>
+            </label>
+            <input type="text"
+                   id="title"
+                   name="title"
+                   value="{{ task.title if task else '' }}"
+                   maxlength="200"
+                   required
+                   placeholder="Enter task title"
+                   data-testid="title-input">
+            <span class="help-text">Maximum 200 characters</span>
+        </div>
+
+        <!-- Description Field -->
+        <div class="form-group">
+            <label for="description" data-testid="description-label">Description</label>
+            <textarea id="description"
+                      name="description"
+                      rows="4"
+                      placeholder="Enter task description (optional)"
+                      data-testid="description-input">{{ task.description if task else '' }}</textarea>
+        </div>
+
+        <!-- Status Field -->
+        <div class="form-group">
+            <label for="status" data-testid="status-label">Status</label>
+            <select id="status" name="status" data-testid="status-input">
+                {% for status in statuses %}
+                    <option value="{{ status.value }}"
+                            {% if task and task.status == status.value %}selected{% endif %}>
+                        {{ status.value | replace('_', ' ') | title }}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <!-- Priority Field -->
+        <div class="form-group">
+            <label for="priority" data-testid="priority-label">Priority</label>
+            <select id="priority" name="priority" data-testid="priority-input">
+                {% for priority in priorities %}
+                    <option value="{{ priority.value }}"
+                            {% if task and task.priority == priority.value %}selected
+                            {% elif not task and priority.value == 'medium' %}selected{% endif %}>
+                        {{ priority.value | title }}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <!-- Due Date Field -->
+        <div class="form-group">
+            <label for="due_date" data-testid="due-date-label">Due Date</label>
+            <input type="datetime-local"
+                   id="due_date"
+                   name="due_date"
+                   value="{{ task.due_date.strftime('%Y-%m-%dT%H:%M') if task and task.due_date else '' }}"
+                   data-testid="due-date-input">
+        </div>
+
+        <!-- Estimated Minutes Field -->
+        <div class="form-group">
+            <label for="estimated_minutes" data-testid="estimated-minutes-label">
+                Estimated Duration (minutes)
+            </label>
+            <input type="number"
+                   id="estimated_minutes"
+                   name="estimated_minutes"
+                   value="{{ task.estimated_minutes if task and task.estimated_minutes else '' }}"
+                   min="1"
+                   placeholder="e.g., 30"
+                   data-testid="estimated-minutes-input">
+            <span class="help-text">How long do you expect this task to take?</span>
+        </div>
+
+        <!-- Form Actions -->
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary" data-testid="submit-button">
+                {% if task %}Update Task{% else %}Create Task{% endif %}
+            </button>
+            <a href="{{ url_for('views.index') }}" class="btn btn-secondary" data-testid="cancel-button">
+                Cancel
+            </a>
+        </div>
+    </form>
+</div>
+{% endblock %}
