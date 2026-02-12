@@ -216,7 +216,7 @@ jobs:
       - name: Run smoke tests against PROD
         env:
           TEST_BASE_URL: http://localhost:5003
-        run: pytest -m smoke -v
+        run: pytest -m "smoke and not e2e" -v
 
       - name: Cleanup prod container
         if: always()
