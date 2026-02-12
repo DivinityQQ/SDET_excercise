@@ -1,4 +1,18 @@
-"""Fixtures for cross-service contract and flow tests."""
+"""
+Cross-Service Test Fixtures for Microservices Integration Testing.
+
+This module provides shared pytest fixtures that spin up multiple Flask
+applications (auth and tasks) in the same process so that cross-service
+interactions can be tested without Docker or HTTP networking.  Each
+service gets its own test client and its own in-memory database, just
+like production where each microservice owns its datastore independently.
+
+Key SDET Concepts Demonstrated:
+- Session-scoped app fixtures to avoid repeated startup costs
+- Function-scoped test clients for per-test database isolation
+- Shared JWT secret fixture so both services agree on token signing
+- Teardown patterns (rollback + drop_all) to prevent test pollution
+"""
 
 from __future__ import annotations
 
@@ -17,16 +31,19 @@ from services.tasks.task_app import db as task_db
 
 @pytest.fixture(scope="session")
 def auth_service_app():
+    """Provide a session-scoped auth Flask app for cross-service tests."""
     return create_auth_app("testing")
 
 
 @pytest.fixture(scope="session")
 def task_service_app():
+    """Provide a session-scoped task Flask app for cross-service tests."""
     return create_task_app("testing")
 
 
 @pytest.fixture(scope="function")
 def auth_client(auth_service_app):
+    """Provide a per-test auth service client with fresh database tables."""
     with auth_service_app.app_context():
         auth_db.create_all()
     with auth_service_app.test_client() as client:
@@ -38,6 +55,7 @@ def auth_client(auth_service_app):
 
 @pytest.fixture(scope="function")
 def task_client(task_service_app):
+    """Provide a per-test task service client with fresh database tables."""
     with task_service_app.app_context():
         task_db.create_all()
     with task_service_app.test_client() as client:
@@ -49,4 +67,5 @@ def task_client(task_service_app):
 
 @pytest.fixture
 def jwt_secret(auth_service_app) -> str:
+    """Provide the shared JWT secret used by both services."""
     return auth_service_app.config["JWT_SECRET_KEY"]

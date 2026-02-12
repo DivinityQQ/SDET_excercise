@@ -1,4 +1,21 @@
-"""HTML view routes for task service web UI."""
+"""
+HTML View Routes for the Task Service Web UI.
+
+Serves server-rendered HTML pages (login, registration, task list, task
+detail, create/edit forms) and processes form submissions.  Authentication
+is delegated to the **auth service** via cross-service HTTP calls --
+this module never accesses a user/password database directly.
+
+Tokens received from the auth service are stored in the Flask session
+cookie so that subsequent page loads can re-verify the user without
+requiring them to re-authenticate on every request.
+
+Key Concepts Demonstrated:
+- Server-rendered views with Flask templates (Jinja2)
+- Cross-service HTTP calls (``requests`` library) to the auth service
+- Session-based token storage for browser authentication flows
+- Decorator pattern (``login_required``) for protecting view routes
+"""
 
 from __future__ import annotations
 
@@ -33,10 +50,30 @@ views_bp = Blueprint("views", __name__)
 
 
 def _auth_service_url(path: str) -> str:
+    """
+    Build a full URL to an auth service endpoint.
+
+    Reads the base URL from ``AUTH_SERVICE_URL`` in the app config and
+    appends the given *path*, ensuring there are no doubled slashes.
+
+    Args:
+        path: The path component of the auth endpoint
+            (e.g., ``"/api/auth/login"``).
+
+    Returns:
+        The fully-qualified URL string.
+    """
     return f"{current_app.config['AUTH_SERVICE_URL'].rstrip('/')}/{path.lstrip('/')}"
 
 
 def _verify_session_token() -> dict[str, Any] | None:
+    """
+    Verify the JWT stored in the Flask session cookie.
+
+    Returns:
+        The decoded token payload if valid, or ``None`` if no token is
+        present or verification fails.
+    """
     token = session.get("auth_token")
     if not token:
         return None
@@ -44,15 +81,34 @@ def _verify_session_token() -> dict[str, Any] | None:
 
 
 def login_required(view_func):
-    """Require a valid token in session for view routes."""
+    """
+    Decorator that requires a valid JWT in the session for view routes.
+
+    Similar in purpose to ``require_auth`` in ``auth.py``, but designed
+    for browser-facing routes: instead of returning a 401 JSON error, it
+    redirects unauthenticated users to the login page.  On success it
+    populates ``flask.g`` with the user identity, just like the API
+    decorator.
+
+    Args:
+        view_func: The Flask view function to protect.
+
+    Returns:
+        A wrapped view function that redirects to login when no valid
+        session token exists.
+    """
 
     @wraps(view_func)
     def wrapper(*args, **kwargs):
         payload = _verify_session_token()
         if payload is None:
+            # Clear any stale/invalid token before redirecting so the user
+            # is not stuck in a redirect loop with a bad cookie value.
             session.pop("auth_token", None)
             return redirect(url_for("views.login"))
 
+        # Store user identity on flask.g for downstream access by view
+        # functions and templates.
         g.user_id = payload["user_id"]
         g.username = payload["username"]
         return view_func(*args, **kwargs)
@@ -61,6 +117,18 @@ def login_required(view_func):
 
 
 def get_task_or_404(task_id: int) -> Task:
+    """
+    Retrieve a task by ID for the current user, or abort with 404.
+
+    Args:
+        task_id: The primary-key ID of the task to look up.
+
+    Returns:
+        The ``Task`` instance if found and owned by the current user.
+
+    Raises:
+        404: If no matching task exists.
+    """
     task = db.session.scalar(select(Task).where(Task.id == task_id, Task.user_id == g.user_id))
     if not task:
         abort(404)
@@ -68,6 +136,15 @@ def get_task_or_404(task_id: int) -> Task:
 
 
 def ensure_utc(value: datetime) -> datetime:
+    """
+    Normalise a datetime to UTC.
+
+    Args:
+        value: The datetime to normalise.
+
+    Returns:
+        A timezone-aware datetime in UTC.
+    """
     if value.tzinfo is None:
         return value.replace(tzinfo=timezone.utc)
     return value.astimezone(timezone.utc)
@@ -75,6 +152,12 @@ def ensure_utc(value: datetime) -> datetime:
 
 @views_bp.route("/login", methods=["GET"])
 def login():
+    """
+    Render the login page.
+
+    If the user already has a valid session token, redirect straight to
+    the task list instead of showing the login form.
+    """
     if _verify_session_token() is not None:
         return redirect(url_for("views.index"))
     return render_template("login.html")
@@ -82,12 +165,21 @@ def login():
 
 @views_bp.route("/login", methods=["POST"])
 def login_submit():
+    """
+    Handle login form submission.
+
+    Sends the credentials to the auth service via a cross-service HTTP
+    POST.  On success, stores the returned JWT in the Flask session
+    cookie so that subsequent requests are authenticated automatically.
+    """
     username = request.form.get("username", "").strip()
     password = request.form.get("password", "")
     if not username or not password:
         flash("Username and password are required.", "error")
         return render_template("login.html"), 400
 
+    # Cross-service call: delegate credential verification to the auth
+    # service.  The task service never stores or checks passwords itself.
     try:
         response = requests.post(
             _auth_service_url("/api/auth/login"),
@@ -106,6 +198,8 @@ def login_submit():
         if not token:
             flash("Invalid login response received.", "error")
             return render_template("login.html"), 502
+        # Persist the JWT in the encrypted Flask session cookie so the
+        # browser does not need to re-authenticate on every page load.
         session["auth_token"] = token
         flash("Logged in successfully.", "success")
         return redirect(url_for("views.index"))
@@ -120,6 +214,11 @@ def login_submit():
 
 @views_bp.route("/register", methods=["GET"])
 def register():
+    """
+    Render the registration page.
+
+    If the user already has a valid session, redirect to the task list.
+    """
     if _verify_session_token() is not None:
         return redirect(url_for("views.index"))
     return render_template("register.html")
@@ -127,6 +226,13 @@ def register():
 
 @views_bp.route("/register", methods=["POST"])
 def register_submit():
+    """
+    Handle registration form submission.
+
+    Forwards the new user's details to the auth service via a cross-service
+    HTTP POST.  On success, redirects to the login page so the user can
+    sign in with their new credentials.
+    """
     username = request.form.get("username", "").strip()
     email = request.form.get("email", "").strip()
     password = request.form.get("password", "")
@@ -135,6 +241,7 @@ def register_submit():
         flash("Username, email, and password are required.", "error")
         return render_template("register.html"), 400
 
+    # Cross-service call: delegate account creation to the auth service.
     try:
         response = requests.post(
             _auth_service_url("/api/auth/register"),
@@ -162,6 +269,9 @@ def register_submit():
 
 @views_bp.route("/logout", methods=["POST"])
 def logout():
+    """
+    Log the user out by clearing the session token and redirect to login.
+    """
     session.pop("auth_token", None)
     flash("Logged out. Session cleared.", "success")
     return redirect(url_for("views.login"))
@@ -170,6 +280,13 @@ def logout():
 @views_bp.route("/")
 @login_required
 def index():
+    """
+    Render the main task list page with optional status/priority filters.
+
+    Queries the database for all tasks belonging to the authenticated
+    user, applying any query-string filters, and passes the results to
+    the ``index.html`` template.
+    """
     status_filter = request.args.get("status", "")
     priority_filter = request.args.get("priority", "")
 
@@ -196,6 +313,9 @@ def index():
 @views_bp.route("/tasks/new")
 @login_required
 def new_task():
+    """
+    Render the blank task creation form.
+    """
     return render_template(
         "task_form.html",
         task=None,
@@ -209,6 +329,12 @@ def new_task():
 @views_bp.route("/tasks", methods=["POST"])
 @login_required
 def create_task():
+    """
+    Handle the task creation form submission.
+
+    Validates form input, creates a new ``Task`` row owned by the
+    authenticated user, and redirects to the task list on success.
+    """
     title = request.form.get("title", "").strip()
     if not title:
         flash("Title is required", "error")
@@ -256,6 +382,12 @@ def create_task():
 @views_bp.route("/tasks/<int:task_id>")
 @login_required
 def view_task(task_id: int):
+    """
+    Render the detail page for a single task.
+
+    Args:
+        task_id: The primary-key ID of the task to display.
+    """
     task = get_task_or_404(task_id)
     return render_template("task_detail.html", task=task, statuses=TaskStatus)
 
@@ -263,6 +395,12 @@ def view_task(task_id: int):
 @views_bp.route("/tasks/<int:task_id>/edit")
 @login_required
 def edit_task(task_id: int):
+    """
+    Render the task edit form pre-populated with the task's current values.
+
+    Args:
+        task_id: The primary-key ID of the task to edit.
+    """
     task = get_task_or_404(task_id)
     return render_template(
         "task_form.html",
@@ -277,6 +415,14 @@ def edit_task(task_id: int):
 @views_bp.route("/tasks/<int:task_id>/update", methods=["POST"])
 @login_required
 def update_task(task_id: int):
+    """
+    Handle the task edit form submission.
+
+    Validates form input and applies changes to the existing task.
+
+    Args:
+        task_id: The primary-key ID of the task to update.
+    """
     task = get_task_or_404(task_id)
 
     title = request.form.get("title", "").strip()
@@ -323,6 +469,12 @@ def update_task(task_id: int):
 @views_bp.route("/tasks/<int:task_id>/delete", methods=["POST"])
 @login_required
 def delete_task(task_id: int):
+    """
+    Handle the task deletion form submission.
+
+    Args:
+        task_id: The primary-key ID of the task to delete.
+    """
     task = get_task_or_404(task_id)
     db.session.delete(task)
     db.session.commit()
@@ -333,6 +485,15 @@ def delete_task(task_id: int):
 @views_bp.route("/tasks/<int:task_id>/status", methods=["POST"])
 @login_required
 def update_status(task_id: int):
+    """
+    Handle the quick-status-update form submission from the task list.
+
+    Allows the user to change a task's status directly from the list
+    page without navigating to the full edit form.
+
+    Args:
+        task_id: The primary-key ID of the task to update.
+    """
     task = get_task_or_404(task_id)
     new_status = request.form.get("status")
     if new_status in [status.value for status in TaskStatus]:
@@ -342,4 +503,3 @@ def update_status(task_id: int):
     else:
         flash("Invalid status", "error")
     return redirect(url_for("views.index"))
-

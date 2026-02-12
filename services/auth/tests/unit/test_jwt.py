@@ -1,4 +1,16 @@
-"""Unit tests for auth JWT creation."""
+"""
+Unit tests for auth JWT token creation and validation.
+
+Verifies that the ``create_token`` helper produces standards-compliant
+HS256 JWTs with the expected claims, and that expiration / clock-skew
+behaviour matches the project's security requirements.
+
+Key SDET Concepts Demonstrated:
+- Pure unit testing with no database or HTTP layer
+- Positive and negative token-validation scenarios
+- Boundary testing for time-sensitive logic (clock skew / leeway)
+- Using pytest.raises for expected-exception assertions
+"""
 
 from __future__ import annotations
 
@@ -15,9 +27,15 @@ TEST_SECRET = "test-jwt-secret-key-for-local-tests-123456"
 
 
 def test_create_token_contains_required_claims():
+    """Test that a newly created token embeds all mandatory JWT claims."""
+    # Arrange
+    user_id = 7
+    username = "alice"
+
+    # Act
     token = create_token(
-        user_id=7,
-        username="alice",
+        user_id=user_id,
+        username=username,
         secret=TEST_SECRET,
         expiry_hours=1,
     )
@@ -29,6 +47,7 @@ def test_create_token_contains_required_claims():
         options={"require": ["user_id", "username", "iat", "exp"]},
     )
 
+    # Assert
     assert payload["user_id"] == 7
     assert payload["username"] == "alice"
     assert isinstance(payload["iat"], int)
@@ -37,6 +56,8 @@ def test_create_token_contains_required_claims():
 
 
 def test_create_token_expired_fails_decode():
+    """Test that decoding an already-expired token raises ExpiredSignatureError."""
+    # Arrange
     token = create_token(
         user_id=1,
         username="alice",
@@ -44,22 +65,31 @@ def test_create_token_expired_fails_decode():
         expiry_hours=-1,
     )
 
+    # Act & Assert
     with pytest.raises(jwt.ExpiredSignatureError):
         jwt.decode(token, TEST_SECRET, algorithms=["HS256"])
 
 
 def test_create_token_sets_hs256_header_only():
+    """Test that the token header specifies HS256 as the signing algorithm."""
+    # Arrange
     token = create_token(
         user_id=1,
         username="alice",
         secret=TEST_SECRET,
         expiry_hours=1,
     )
+
+    # Act
     header = jwt.get_unverified_header(token)
+
+    # Assert
     assert header["alg"] == "HS256"
 
 
 def test_clock_skew_within_tolerance_is_accepted():
+    """Test that a token expired just within the leeway window is still accepted."""
+    # Arrange
     now = datetime.now(timezone.utc)
     payload = {
         "user_id": 1,
@@ -69,11 +99,16 @@ def test_clock_skew_within_tolerance_is_accepted():
     }
     token = jwt.encode(payload, TEST_SECRET, algorithm="HS256")
 
+    # Act
     decoded = jwt.decode(token, TEST_SECRET, algorithms=["HS256"], leeway=30)
+
+    # Assert
     assert decoded["user_id"] == 1
 
 
 def test_clock_skew_beyond_tolerance_is_rejected():
+    """Test that a token expired beyond the leeway window is rejected."""
+    # Arrange
     now = datetime.now(timezone.utc)
     payload = {
         "user_id": 1,
@@ -83,6 +118,6 @@ def test_clock_skew_beyond_tolerance_is_rejected():
     }
     token = jwt.encode(payload, TEST_SECRET, algorithm="HS256")
 
+    # Act & Assert
     with pytest.raises(jwt.ExpiredSignatureError):
         jwt.decode(token, TEST_SECRET, algorithms=["HS256"], leeway=30)
-
