@@ -2,7 +2,7 @@
 Unit tests for auth JWT token creation and validation.
 
 Verifies that the ``create_token`` helper produces standards-compliant
-HS256 JWTs with the expected claims, and that expiration / clock-skew
+RS256 JWTs with the expected claims, and that expiration / clock-skew
 behaviour matches the project's security requirements.
 
 Key SDET Concepts Demonstrated:
@@ -20,11 +20,9 @@ import jwt
 import pytest
 
 from auth_app.jwt import create_token
+from shared.test_helpers import TEST_PRIVATE_KEY, TEST_PUBLIC_KEY
 
 pytestmark = pytest.mark.unit
-
-TEST_SECRET = "test-jwt-secret-key-for-local-tests-123456"
-
 
 def test_create_token_contains_required_claims():
     """Test that a newly created token embeds all mandatory JWT claims."""
@@ -36,14 +34,14 @@ def test_create_token_contains_required_claims():
     token = create_token(
         user_id=user_id,
         username=username,
-        secret=TEST_SECRET,
+        private_key=TEST_PRIVATE_KEY,
         expiry_hours=1,
     )
 
     payload = jwt.decode(
         token,
-        TEST_SECRET,
-        algorithms=["HS256"],
+        TEST_PUBLIC_KEY,
+        algorithms=["RS256"],
         options={"require": ["user_id", "username", "iat", "exp"]},
     )
 
@@ -61,22 +59,22 @@ def test_create_token_expired_fails_decode():
     token = create_token(
         user_id=1,
         username="alice",
-        secret=TEST_SECRET,
+        private_key=TEST_PRIVATE_KEY,
         expiry_hours=-1,
     )
 
     # Act & Assert
     with pytest.raises(jwt.ExpiredSignatureError):
-        jwt.decode(token, TEST_SECRET, algorithms=["HS256"])
+        jwt.decode(token, TEST_PUBLIC_KEY, algorithms=["RS256"])
 
 
-def test_create_token_sets_hs256_header_only():
-    """Test that the token header specifies HS256 as the signing algorithm."""
+def test_create_token_sets_rs256_header_only():
+    """Test that the token header specifies RS256 as the signing algorithm."""
     # Arrange
     token = create_token(
         user_id=1,
         username="alice",
-        secret=TEST_SECRET,
+        private_key=TEST_PRIVATE_KEY,
         expiry_hours=1,
     )
 
@@ -84,7 +82,7 @@ def test_create_token_sets_hs256_header_only():
     header = jwt.get_unverified_header(token)
 
     # Assert
-    assert header["alg"] == "HS256"
+    assert header["alg"] == "RS256"
 
 
 def test_clock_skew_within_tolerance_is_accepted():
@@ -97,10 +95,10 @@ def test_clock_skew_within_tolerance_is_accepted():
         "iat": int((now - timedelta(minutes=2)).timestamp()),
         "exp": int((now - timedelta(seconds=20)).timestamp()),
     }
-    token = jwt.encode(payload, TEST_SECRET, algorithm="HS256")
+    token = jwt.encode(payload, TEST_PRIVATE_KEY, algorithm="RS256")
 
     # Act
-    decoded = jwt.decode(token, TEST_SECRET, algorithms=["HS256"], leeway=30)
+    decoded = jwt.decode(token, TEST_PUBLIC_KEY, algorithms=["RS256"], leeway=30)
 
     # Assert
     assert decoded["user_id"] == 1
@@ -116,8 +114,8 @@ def test_clock_skew_beyond_tolerance_is_rejected():
         "iat": int((now - timedelta(minutes=2)).timestamp()),
         "exp": int((now - timedelta(seconds=45)).timestamp()),
     }
-    token = jwt.encode(payload, TEST_SECRET, algorithm="HS256")
+    token = jwt.encode(payload, TEST_PRIVATE_KEY, algorithm="RS256")
 
     # Act & Assert
     with pytest.raises(jwt.ExpiredSignatureError):
-        jwt.decode(token, TEST_SECRET, algorithms=["HS256"], leeway=30)
+        jwt.decode(token, TEST_PUBLIC_KEY, algorithms=["RS256"], leeway=30)

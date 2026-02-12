@@ -1,7 +1,7 @@
 """
 Configuration Classes for the Task Service.
 
-Centralises all environment-dependent settings (database URIs, JWT secrets,
+Centralises all environment-dependent settings (database URIs, JWT keys,
 cross-service URLs) into a hierarchy of configuration classes.  The base
 ``Config`` class defines sensible development defaults, while subclasses
 override only what differs per environment.
@@ -21,6 +21,41 @@ from pathlib import Path
 BASE_DIR = Path(__file__).resolve().parent
 
 
+def _load_key(raw_env_var: str, path_env_var: str) -> str:
+    """Load a PEM key from direct env content or from a path env variable."""
+    raw_key = os.environ.get(raw_env_var, "").strip()
+    if raw_key:
+        return raw_key
+
+    key_path = os.environ.get(path_env_var, "").strip()
+    if key_path:
+        try:
+            return Path(key_path).read_text(encoding="utf-8")
+        except OSError as exc:
+            raise RuntimeError(
+                f"Unable to read JWT key file at '{key_path}' from {path_env_var}."
+            ) from exc
+
+    raise RuntimeError(
+        f"Missing JWT key configuration: set {raw_env_var} or {path_env_var}."
+    )
+
+
+def _has_key_source(raw_env_var: str, path_env_var: str) -> bool:
+    """Return True when at least one key source variable is configured."""
+    return bool(
+        os.environ.get(raw_env_var, "").strip()
+        or os.environ.get(path_env_var, "").strip()
+    )
+
+
+def load_task_public_key(*, testing: bool) -> str:
+    """Resolve task-service JWT public key for the selected environment."""
+    if testing and _has_key_source("TEST_JWT_PUBLIC_KEY", "TEST_JWT_PUBLIC_KEY_PATH"):
+        return _load_key("TEST_JWT_PUBLIC_KEY", "TEST_JWT_PUBLIC_KEY_PATH")
+    return _load_key("JWT_PUBLIC_KEY", "JWT_PUBLIC_KEY_PATH")
+
+
 class Config:
     """
     Base configuration with development-safe defaults.
@@ -34,8 +69,8 @@ class Config:
         SQLALCHEMY_TRACK_MODIFICATIONS: Disabled to save memory.
         SQLALCHEMY_DATABASE_URI: Database connection string (default: local
             SQLite file).
-        JWT_SECRET_KEY: Shared secret for verifying JWTs issued by the
-            auth service.  Must match the auth service's signing key.
+        JWT_PUBLIC_KEY: Public key used to verify JWTs issued by the
+            auth service.
         JWT_CLOCK_SKEW_SECONDS: Allowed clock drift (in seconds) when
             validating JWT ``exp`` / ``iat`` claims.
         AUTH_SERVICE_URL: Base URL of the auth service for cross-service
@@ -54,11 +89,6 @@ class Config:
         f"sqlite:///{BASE_DIR / 'instance' / 'tasks.db'}",
     )
 
-    # JWT shared secret -- must be identical to the value configured on the
-    # auth service so that tokens issued there can be verified here.
-    JWT_SECRET_KEY: str = os.environ.get(
-        "JWT_SECRET_KEY", "dev-jwt-secret-change-in-production"
-    )
     # Tolerate minor clock differences between services when checking exp/iat.
     JWT_CLOCK_SKEW_SECONDS: int = int(os.environ.get("JWT_CLOCK_SKEW_SECONDS", "30"))
 
@@ -91,8 +121,7 @@ class TestingConfig(Config):
 
     Attributes:
         SQLALCHEMY_DATABASE_URI: Points to a dedicated test database file.
-        JWT_SECRET_KEY: A deterministic test-only secret so that test
-            fixtures can mint predictable tokens.
+        JWT_PUBLIC_KEY: Test public key for verifying test-minted JWTs.
         AUTH_SERVICE_URL: A placeholder URL; tests are expected to mock
             cross-service calls rather than requiring a live auth service.
         AUTH_SERVICE_TIMEOUT: Kept short (1 s) to fail fast in tests.
@@ -106,9 +135,6 @@ class TestingConfig(Config):
         f"sqlite:///{BASE_DIR / 'instance' / 'test_tasks.db'}?check_same_thread=False",
     )
     SQLALCHEMY_ENGINE_OPTIONS: dict = {"pool_pre_ping": True}
-    JWT_SECRET_KEY: str = os.environ.get(
-        "TEST_JWT_SECRET_KEY", "test-jwt-secret-key-for-local-tests-123456"
-    )
     AUTH_SERVICE_URL: str = os.environ.get("TEST_AUTH_SERVICE_URL", "http://auth-service")
     AUTH_SERVICE_TIMEOUT: int = int(os.environ.get("TEST_AUTH_SERVICE_TIMEOUT", "1"))
     WTF_CSRF_ENABLED: bool = False

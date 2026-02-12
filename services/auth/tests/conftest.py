@@ -19,8 +19,12 @@ from collections.abc import Callable
 
 import pytest
 
+from shared.test_helpers import TEST_PRIVATE_KEY, TEST_PUBLIC_KEY
+
 os.environ["FLASK_ENV"] = "testing"
-os.environ["TEST_JWT_SECRET_KEY"] = "test-jwt-secret-key-for-local-tests-123456"
+# Auth testing config resolves keys from TEST_* sources.
+os.environ["TEST_JWT_PRIVATE_KEY"] = TEST_PRIVATE_KEY
+os.environ["TEST_JWT_PUBLIC_KEY"] = TEST_PUBLIC_KEY
 
 from auth_app import create_app, db
 from auth_app.models import User

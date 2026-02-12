@@ -22,7 +22,7 @@ from __future__ import annotations
 
 import pytest
 
-from shared.test_helpers import create_test_token
+from shared.test_helpers import TEST_PRIVATE_KEY, create_test_token
 
 pytestmark = [pytest.mark.cross_service, pytest.mark.isolation]
 
@@ -48,7 +48,7 @@ def test_task_api_works_with_local_token_when_auth_service_not_involved(
     token = create_test_token(
         user_id=1,
         username="local_user",
-        secret=task_service_app.config["JWT_SECRET_KEY"],
+        private_key=TEST_PRIVATE_KEY,
     )
     headers = {
         "Authorization": f"Bearer {token}",

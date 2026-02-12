@@ -4,13 +4,13 @@ JWT Verification Helpers for the Task Service.
 Provides utilities for verifying JSON Web Tokens (JWTs) issued by the
 auth service and a decorator for protecting Flask endpoints that require
 authentication.  The task service never *issues* tokens -- it only
-validates them using the shared ``JWT_SECRET_KEY``.
+validates them using the auth service's ``JWT_PUBLIC_KEY``.
 
 Key Concepts Demonstrated:
 - JWT verification with the ``PyJWT`` library
 - Decorator pattern for endpoint authentication (``require_auth``)
 - Using ``flask.g`` to store request-scoped user identity
-- Shared-secret symmetric signing (HS256) between micro-services
+- Asymmetric verification of auth-issued tokens (RS256)
 """
 
 from __future__ import annotations
@@ -22,13 +22,13 @@ from typing import Any
 import jwt
 from flask import Response, current_app, g, jsonify, request
 
-DEFAULT_ALLOWED_ALGORITHMS = ["HS256"]
+DEFAULT_ALLOWED_ALGORITHMS = ["RS256"]
 REQUIRED_TOKEN_CLAIMS = ["user_id", "username", "iat", "exp"]
 
 
 def verify_token(
     token: str,
-    secret: str,
+    public_key: str,
     algorithms: list[str] | None = None,
 ) -> dict[str, Any] | None:
     """
@@ -41,11 +41,10 @@ def verify_token(
 
     Args:
         token: The encoded JWT string to verify.
-        secret: The shared secret key used for HS256 signature verification.
-            Must match the key that the auth service used when issuing the
-            token.
+        public_key: The RSA public key in PEM format used for signature
+            verification.
         algorithms: List of acceptable signing algorithms.  Defaults to
-            ``["HS256"]`` to prevent algorithm-confusion attacks.
+            ``["RS256"]`` to prevent algorithm-confusion attacks.
 
     Returns:
         The decoded payload dictionary if the token is valid, or ``None``
@@ -54,7 +53,7 @@ def verify_token(
     try:
         decoded = jwt.decode(
             token,
-            secret,
+            public_key,
             algorithms=algorithms or DEFAULT_ALLOWED_ALGORITHMS,
             options={"require": REQUIRED_TOKEN_CLAIMS},
             leeway=int(current_app.config.get("JWT_CLOCK_SKEW_SECONDS", 30)),
@@ -106,7 +105,7 @@ def require_auth(view_func: Callable[..., tuple[Response, int] | Response]):
 
         payload = verify_token(
             token,
-            current_app.config["JWT_SECRET_KEY"],
+            current_app.config["JWT_PUBLIC_KEY"],
             algorithms=DEFAULT_ALLOWED_ALGORITHMS,
         )
         if payload is None:

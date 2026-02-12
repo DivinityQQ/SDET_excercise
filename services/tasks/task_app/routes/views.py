@@ -27,7 +27,6 @@ from typing import Any
 import requests
 from flask import (
     Blueprint,
-    Response,
     abort,
     current_app,
     flash,
@@ -77,7 +76,7 @@ def _verify_session_token() -> dict[str, Any] | None:
     token = session.get("auth_token")
     if not token:
         return None
-    return verify_token(token, current_app.config["JWT_SECRET_KEY"], algorithms=["HS256"])
+    return verify_token(token, current_app.config["JWT_PUBLIC_KEY"], algorithms=["RS256"])
 
 
 def login_required(view_func):

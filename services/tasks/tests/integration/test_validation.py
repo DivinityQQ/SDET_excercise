@@ -9,7 +9,7 @@ Key SDET Concepts Demonstrated:
 - Boundary-value analysis (max-length title, minimum estimated_minutes)
 - Equivalence partitioning via @pytest.mark.parametrize
 - Negative testing for invalid enums, bad JSON, wrong content-type
-- Auth-failure scenarios (missing header, malformed header, expired/wrong-secret tokens)
+- Auth-failure scenarios (missing header, malformed header, expired/wrong-key tokens)
 """
 
 from __future__ import annotations
@@ -18,7 +18,11 @@ import json
 
 import pytest
 
-from shared.test_helpers import create_test_token
+from shared.test_helpers import (
+    TEST_PRIVATE_KEY,
+    create_test_token,
+    generate_throwaway_key_pair,
+)
 
 pytestmark = pytest.mark.integration
 
@@ -385,7 +389,7 @@ class TestAuthValidation:
         token = create_test_token(
             user_id=1,
             username="expired",
-            secret=app.config["JWT_SECRET_KEY"],
+            private_key=TEST_PRIVATE_KEY,
             expired=True,
         )
 
@@ -399,13 +403,14 @@ class TestAuthValidation:
         assert response.status_code == 401
         assert response.get_json() == {"error": "Invalid or expired token"}
 
-    def test_wrong_secret_token_returns_401(self, client, db_session):
-        """Test that a token signed with a different secret is rejected with 401."""
+    def test_wrong_key_token_returns_401(self, client, db_session):
+        """Test that a token signed with a different private key is rejected with 401."""
         # Arrange
+        wrong_private_key, _ = generate_throwaway_key_pair()
         token = create_test_token(
             user_id=1,
-            username="wrong_secret",
-            secret="different-secret-key-for-tests-987654",
+            username="wrong_key",
+            private_key=wrong_private_key,
         )
 
         # Act

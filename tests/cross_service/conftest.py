@@ -10,7 +10,7 @@ like production where each microservice owns its datastore independently.
 Key SDET Concepts Demonstrated:
 - Session-scoped app fixtures to avoid repeated startup costs
 - Function-scoped test clients for per-test database isolation
-- Shared JWT secret fixture so both services agree on token signing
+- Shared RSA key fixtures so auth and task services agree on JWT contract
 - Teardown patterns (rollback + drop_all) to prevent test pollution
 """
 
@@ -20,8 +20,12 @@ import os
 
 import pytest
 
+from shared.test_helpers import TEST_PRIVATE_KEY, TEST_PUBLIC_KEY
+
 os.environ["FLASK_ENV"] = "testing"
-os.environ["TEST_JWT_SECRET_KEY"] = "test-jwt-secret-key-for-local-tests-123456"
+# Cross-service tests boot both apps: auth needs private+public, task uses public.
+os.environ["TEST_JWT_PRIVATE_KEY"] = TEST_PRIVATE_KEY
+os.environ["TEST_JWT_PUBLIC_KEY"] = TEST_PUBLIC_KEY
 
 from services.auth.auth_app import create_app as create_auth_app
 from services.auth.auth_app import db as auth_db
@@ -66,6 +70,12 @@ def task_client(task_service_app):
 
 
 @pytest.fixture
-def jwt_secret(auth_service_app) -> str:
-    """Provide the shared JWT secret used by both services."""
-    return auth_service_app.config["JWT_SECRET_KEY"]
+def jwt_private_key(auth_service_app) -> str:
+    """Provide the JWT private key used by the auth service in tests."""
+    return auth_service_app.config["JWT_PRIVATE_KEY"]
+
+
+@pytest.fixture
+def jwt_public_key(auth_service_app) -> str:
+    """Provide the JWT public key shared with the task service in tests."""
+    return auth_service_app.config["JWT_PUBLIC_KEY"]

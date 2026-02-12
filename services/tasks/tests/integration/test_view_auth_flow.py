@@ -18,7 +18,7 @@ from __future__ import annotations
 
 import pytest
 
-from shared.test_helpers import create_test_token
+from shared.test_helpers import TEST_PRIVATE_KEY, create_test_token
 
 pytestmark = pytest.mark.integration
 
@@ -57,7 +57,7 @@ def test_login_stores_token_in_session(app, client, db_session, monkeypatch):
     token = create_test_token(
         user_id=1,
         username="demo",
-        secret=app.config["JWT_SECRET_KEY"],
+        private_key=TEST_PRIVATE_KEY,
     )
     monkeypatch.setattr(
         "services.tasks.task_app.routes.views.requests.post",

@@ -21,10 +21,16 @@ from typing import Any
 import pytest
 from faker import Faker
 
-os.environ["FLASK_ENV"] = "testing"
-os.environ["TEST_JWT_SECRET_KEY"] = "test-jwt-secret-key-for-local-tests-123456"
+from shared.test_helpers import (
+    TEST_PRIVATE_KEY,
+    TEST_PUBLIC_KEY,
+    auth_headers,
+    create_test_token,
+)
 
-from shared.test_helpers import auth_headers, create_test_token
+os.environ["FLASK_ENV"] = "testing"
+# Task testing config resolves only TEST_JWT_PUBLIC_KEY.
+os.environ["TEST_JWT_PUBLIC_KEY"] = TEST_PUBLIC_KEY
 from task_app import create_app, db
 from task_app.models import Task, TaskPriority, TaskStatus
 
@@ -82,7 +88,7 @@ def test_token(app) -> str:
     return create_test_token(
         user_id=1,
         username="user_one",
-        secret=app.config["JWT_SECRET_KEY"],
+        private_key=TEST_PRIVATE_KEY,
     )
 
 
@@ -97,7 +103,7 @@ def second_user_token(app) -> str:
     return create_test_token(
         user_id=2,
         username="user_two",
-        secret=app.config["JWT_SECRET_KEY"],
+        private_key=TEST_PRIVATE_KEY,
     )
 
 

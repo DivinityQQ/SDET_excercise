@@ -107,7 +107,7 @@ def _extract_bearer_token() -> str | None:
 
 def _decode_token(token: str) -> dict[str, Any]:
     """
-    Decode and validate an HS256 JWT issued by this service.
+    Decode and validate an RS256 JWT issued by this service.
 
     Verifies the signature, checks expiration, ensures all required claims
     are present, and performs semantic validation on the identity claims
@@ -125,8 +125,8 @@ def _decode_token(token: str) -> dict[str, Any]:
     """
     payload = pyjwt.decode(
         token,
-        current_app.config["JWT_SECRET_KEY"],
-        algorithms=["HS256"],
+        current_app.config["JWT_PUBLIC_KEY"],
+        algorithms=["RS256"],
         options={"require": REQUIRED_TOKEN_CLAIMS},
         # leeway accounts for small clock differences between the machine
         # that issued the token and the machine verifying it.  Without
@@ -243,7 +243,7 @@ def login() -> tuple[Response, int]:
     token = create_token(
         user_id=user.id,
         username=user.username,
-        secret=current_app.config["JWT_SECRET_KEY"],
+        private_key=current_app.config["JWT_PRIVATE_KEY"],
         expiry_hours=current_app.config["JWT_EXPIRY_HOURS"],
     )
     return jsonify({"token": token, "user": user.to_dict()}), 200
@@ -256,7 +256,7 @@ def verify() -> tuple[Response, int]:
 
     Other micro-services call this endpoint to confirm that a token is
     valid and to retrieve the ``user_id`` and ``username`` without
-    needing direct access to the JWT secret.
+    needing direct access to the JWT private key.
 
     Returns:
         200 with ``user_id`` and ``username`` if the token is valid.

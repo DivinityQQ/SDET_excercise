@@ -149,7 +149,7 @@ def test_verify_returns_user_data_for_valid_token(client, db_session, user_facto
     token = create_token(
         user_id=user.id,
         username=user.username,
-        secret=app.config["JWT_SECRET_KEY"],
+        private_key=app.config["JWT_PRIVATE_KEY"],
         expiry_hours=1,
     )
 
@@ -183,7 +183,7 @@ def test_verify_expired_token_returns_401(client, db_session, user_factory, app)
     token = create_token(
         user_id=user.id,
         username=user.username,
-        secret=app.config["JWT_SECRET_KEY"],
+        private_key=app.config["JWT_PRIVATE_KEY"],
         expiry_hours=-1,
     )
 

@@ -1,8 +1,9 @@
 jwt_contract:
-  algorithm: HS256
+  algorithm: RS256
   algorithm_allowlist:
-    - HS256
-  signing_key_env: JWT_SECRET_KEY
+    - RS256
+  signing_key_env: JWT_PRIVATE_KEY
+  verify_key_env: JWT_PUBLIC_KEY
   clock_skew_tolerance_seconds: 30
   required_claims:
     user_id: integer

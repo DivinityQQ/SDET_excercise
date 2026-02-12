@@ -35,13 +35,14 @@ The gateway routes requests by URL prefix:
 
 ### Authentication
 
-Authentication uses **HS256 JWT tokens** with a shared secret across services:
+Authentication uses **RS256 JWT tokens** with asymmetric keys across services:
 
 1. User registers or logs in via the Auth service
 2. Auth service returns a JWT (24h expiry) containing `user_id`, `username`, `iat`, `exp`
 3. Client sends `Authorization: Bearer <token>` on subsequent requests
-4. Task service verifies the token using the shared `JWT_SECRET_KEY`
-5. All task queries are filtered by `user_id` from the token — full tenant isolation
+4. Auth service signs tokens with `JWT_PRIVATE_KEY`
+5. Auth and task services verify tokens with `JWT_PUBLIC_KEY`
+6. All task queries are filtered by `user_id` from the token — full tenant isolation
 
 ## Prerequisites
 
@@ -56,6 +57,7 @@ venv\Scripts\activate        # Windows
 # source venv/bin/activate   # Linux/macOS
 pip install -r requirements.txt
 pip install -r requirements-dev.txt
+python keys/generate.py
 playwright install chromium
 ```
 
@@ -66,6 +68,9 @@ Start all services:
 ```bash
 docker compose up -d --build
 ```
+
+To use non-default local key files without editing compose files, set
+`JWT_PRIVATE_KEY_FILE` / `JWT_PUBLIC_KEY_FILE` (and test equivalents) in `.env`.
 
 Verify everything is healthy:
 
@@ -250,7 +255,12 @@ All configurable via environment or `.env` (see `.env.example`):
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `JWT_SECRET_KEY` | `dev-jwt-secret-change-in-production` | Shared signing key for JWT tokens |
+| `JWT_PRIVATE_KEY_PATH` | `keys/dev.private.pem` | Auth-service private signing key path |
+| `JWT_PUBLIC_KEY_PATH` | `keys/dev.public.pem` | JWT verification key path (auth + task) |
+| `JWT_PRIVATE_KEY_FILE` | `./keys/dev.private.pem` | Host-side private key file for `docker-compose.yml` bind mount |
+| `JWT_PUBLIC_KEY_FILE` | `./keys/dev.public.pem` | Host-side public key file for `docker-compose.yml` bind mount |
+| `TEST_JWT_PRIVATE_KEY_FILE` | `./keys/dev.private.pem` | Host-side private key file for `docker-compose.test.yml` bind mount |
+| `TEST_JWT_PUBLIC_KEY_FILE` | `./keys/dev.public.pem` | Host-side public key file for `docker-compose.test.yml` bind mount |
 | `JWT_EXPIRY_HOURS` | `24` | Token lifetime in hours |
 | `JWT_CLOCK_SKEW_SECONDS` | `30` | Allowed clock drift for token verification |
 | `AUTH_SERVICE_URL` | `http://auth-service:5000` | Auth service base URL (used by task service and gateway) |

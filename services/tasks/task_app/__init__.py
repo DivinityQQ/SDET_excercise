@@ -27,9 +27,9 @@ from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 
 try:
-    from services.tasks.config import get_config
+    from services.tasks.config import get_config, load_task_public_key
 except ModuleNotFoundError:  # pragma: no cover - fallback for service-local execution
-    from config import get_config
+    from config import get_config, load_task_public_key
 
 
 db = SQLAlchemy()
@@ -61,6 +61,7 @@ def create_app(config_name: str | None = None) -> Flask:
     app = Flask(__name__, instance_relative_config=True)
     config_class = get_config(config_name)
     app.config.from_object(config_class)
+    app.config["JWT_PUBLIC_KEY"] = load_task_public_key(testing=bool(app.config.get("TESTING")))
 
     logger.info("Creating task service app with config: %s", config_class.__name__)
 

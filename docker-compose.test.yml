@@ -7,11 +7,14 @@ services:
       dockerfile: services/auth/Dockerfile
     environment:
       - FLASK_ENV=testing
-      - JWT_SECRET_KEY=dev-jwt-secret-change-in-production
+      - TEST_JWT_PRIVATE_KEY_PATH=/app/keys/dev.private.pem
+      - TEST_JWT_PUBLIC_KEY_PATH=/app/keys/dev.public.pem
       - DATABASE_URL=sqlite:///instance/auth_test.db
       - ENVIRONMENT=test
     volumes:
       - auth-test-data:/app/instance
+      - ${TEST_JWT_PRIVATE_KEY_FILE:-./keys/dev.private.pem}:/app/keys/dev.private.pem:ro
+      - ${TEST_JWT_PUBLIC_KEY_FILE:-./keys/dev.public.pem}:/app/keys/dev.public.pem:ro
     healthcheck:
       test:
         [
@@ -32,13 +35,14 @@ services:
       dockerfile: services/tasks/Dockerfile
     environment:
       - FLASK_ENV=testing
-      - JWT_SECRET_KEY=dev-jwt-secret-change-in-production
+      - TEST_JWT_PUBLIC_KEY_PATH=/app/keys/dev.public.pem
       - DATABASE_URL=sqlite:///instance/tasks_test.db
       - AUTH_SERVICE_URL=http://auth-service:5000
       - AUTH_SERVICE_TIMEOUT=3
       - ENVIRONMENT=test
     volumes:
       - task-test-data:/app/instance
+      - ${TEST_JWT_PUBLIC_KEY_FILE:-./keys/dev.public.pem}:/app/keys/dev.public.pem:ro
     healthcheck:
       test:
         [

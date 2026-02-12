@@ -27,6 +27,7 @@ wheels/
 
 # Environment variables
 .env
+keys/*.pem
 
 # Database
 *.db

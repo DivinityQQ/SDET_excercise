@@ -24,6 +24,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: ./.github/actions/generate-keys
       - run: docker compose -p taskapp-nightly -f docker-compose.test.yml up -d --build
       - name: Wait for health
         run: |
@@ -35,10 +36,6 @@ jobs:
           done
           docker compose -p taskapp-nightly -f docker-compose.test.yml logs
           exit 1
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.13"
-      - run: python -m pip install --upgrade pip
       - run: pip install -r requirements-dev.txt
       - run: TEST_BASE_URL=http://localhost:5000 pytest tests/smoke -v
       - if: always()

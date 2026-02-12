@@ -23,9 +23,9 @@ from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 
 try:
-    from services.auth.config import get_config
+    from services.auth.config import get_config, load_auth_keys
 except ModuleNotFoundError:  # pragma: no cover - fallback for service-local execution
-    from config import get_config
+    from config import get_config, load_auth_keys
 
 
 # Shared SQLAlchemy instance -- initialised with a concrete app inside create_app()
@@ -61,6 +61,9 @@ def create_app(config_name: str | None = None) -> Flask:
     app = Flask(__name__, instance_relative_config=True)
     config_class = get_config(config_name)
     app.config.from_object(config_class)
+    private_key, public_key = load_auth_keys(testing=bool(app.config.get("TESTING")))
+    app.config["JWT_PRIVATE_KEY"] = private_key
+    app.config["JWT_PUBLIC_KEY"] = public_key
 
     logger.info("Creating auth service app with config: %s", config_class.__name__)
 

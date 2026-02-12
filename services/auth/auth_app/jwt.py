@@ -3,8 +3,8 @@ JWT token creation for the auth service.
 
 Encapsulates the logic for issuing JSON Web Tokens (JWTs) that are used as
 bearer credentials across the micro-services architecture.  Tokens are signed
-with the HS256 (HMAC-SHA256) symmetric algorithm, meaning both the issuer
-(this service) and any verifier share the same secret key.
+with the RS256 (RSA-SHA256) asymmetric algorithm, meaning only the issuer
+(this service) holds the private key while verifiers only need the public key.
 
 Token structure (claims):
     - ``user_id``  -- integer primary key of the authenticated user.
@@ -15,7 +15,7 @@ Token structure (claims):
       moment the token is rejected by any compliant verifier.
 
 Key Concepts Demonstrated:
-- HS256 symmetric signing with PyJWT
+- RS256 asymmetric signing with PyJWT
 - Canonical JWT claims (iat, exp) and custom claims
 - Input validation before token creation
 - UTC-only timestamps to avoid timezone ambiguity
@@ -32,22 +32,21 @@ import jwt
 def create_token(
     user_id: int,
     username: str,
-    secret: str,
+    private_key: str,
     expiry_hours: int,
 ) -> str:
     """
-    Create an HS256-signed JWT containing canonical auth claims.
+    Create an RS256-signed JWT containing canonical auth claims.
 
     Builds a payload with the caller-supplied identity fields plus standard
     ``iat`` (issued-at) and ``exp`` (expiration) timestamps, then signs it
-    using the provided secret.
+    using the provided private key.
 
     Args:
         user_id: Primary key of the authenticated user.  Must be a
             positive integer.
         username: Display name of the user.  Must be a non-empty string.
-        secret: The HMAC secret key used to sign the token.  This must
-            match the key used by any service that needs to verify the
+        private_key: The RSA private key in PEM format used to sign the
             token.
         expiry_hours: Number of hours from *now* until the token expires.
 
@@ -77,4 +76,4 @@ def create_token(
         "iat": int(now.timestamp()),
         "exp": int(expires_at.timestamp()),
     }
-    return jwt.encode(payload, secret, algorithm="HS256")
+    return jwt.encode(payload, private_key, algorithm="RS256")

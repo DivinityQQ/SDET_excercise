@@ -54,6 +54,7 @@ jobs:
     environment: staging
     steps:
       - uses: actions/checkout@v4
+      - uses: ./.github/actions/generate-keys
       - run: docker compose -f docker-compose.yml up -d --build
       - name: Wait for health checks
         run: |
@@ -65,10 +66,6 @@ jobs:
           done
           docker compose -f docker-compose.yml logs
           exit 1
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.13"
-      - run: python -m pip install --upgrade pip
       - run: pip install -r requirements-dev.txt
       - run: TEST_BASE_URL=http://localhost:5000 pytest tests/smoke -v
       - if: always()
@@ -80,6 +77,7 @@ jobs:
     environment: production
     steps:
       - uses: actions/checkout@v4
+      - uses: ./.github/actions/generate-keys
       - run: docker compose -f docker-compose.yml up -d --build
       - name: Wait for health checks
         run: |
@@ -91,10 +89,6 @@ jobs:
           done
           docker compose -f docker-compose.yml logs
           exit 1
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.13"
-      - run: python -m pip install --upgrade pip
       - run: pip install -r requirements-dev.txt
       - run: TEST_BASE_URL=http://localhost:5000 pytest tests/smoke -v
       - if: always()

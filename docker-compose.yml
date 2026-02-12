@@ -7,9 +7,13 @@ services:
       - "5010:5000"
     environment:
       - FLASK_ENV=production
-      - JWT_SECRET_KEY=dev-jwt-secret-change-in-production
+      - JWT_PRIVATE_KEY_PATH=/app/keys/dev.private.pem
+      - JWT_PUBLIC_KEY_PATH=/app/keys/dev.public.pem
       - DATABASE_URL=sqlite:///instance/auth.db
       - ENVIRONMENT=dev
+    volumes:
+      - ${JWT_PRIVATE_KEY_FILE:-./keys/dev.private.pem}:/app/keys/dev.private.pem:ro
+      - ${JWT_PUBLIC_KEY_FILE:-./keys/dev.public.pem}:/app/keys/dev.public.pem:ro
     container_name: auth-service
     healthcheck:
       test:
@@ -33,11 +37,13 @@ services:
       - "5020:5000"
     environment:
       - FLASK_ENV=production
-      - JWT_SECRET_KEY=dev-jwt-secret-change-in-production
+      - JWT_PUBLIC_KEY_PATH=/app/keys/dev.public.pem
       - DATABASE_URL=sqlite:///instance/tasks.db
       - AUTH_SERVICE_URL=http://auth-service:5000
       - AUTH_SERVICE_TIMEOUT=5
       - ENVIRONMENT=dev
+    volumes:
+      - ${JWT_PUBLIC_KEY_FILE:-./keys/dev.public.pem}:/app/keys/dev.public.pem:ro
     container_name: task-service
     healthcheck:
       test:
