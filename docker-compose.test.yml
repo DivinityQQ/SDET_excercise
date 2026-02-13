@@ -62,10 +62,10 @@ services:
     environment:
       - FLASK_ENV=testing
       - TEST_JWT_PUBLIC_KEY_PATH=/app/keys/dev.public.pem
-      - AUTH_SERVICE_URL=http://auth-service:5000
-      - TASK_SERVICE_URL=http://task-service:5000
-      - AUTH_SERVICE_TIMEOUT=3
-      - TASK_SERVICE_TIMEOUT=3
+      - TEST_AUTH_SERVICE_URL=http://auth-service:5000
+      - TEST_TASK_SERVICE_URL=http://task-service:5000
+      - TEST_AUTH_SERVICE_TIMEOUT=3
+      - TEST_TASK_SERVICE_TIMEOUT=3
       - ENVIRONMENT=test
     volumes:
       - ${TEST_JWT_PUBLIC_KEY_FILE:-./keys/dev.public.pem}:/app/keys/dev.public.pem:ro
@@ -91,10 +91,10 @@ services:
       - "5000:5000"
     environment:
       - FLASK_ENV=testing
-      - AUTH_SERVICE_URL=http://auth-service:5000
-      - TASK_SERVICE_URL=http://task-service:5000
-      - FRONTEND_SERVICE_URL=http://frontend-service:5000
-      - PROXY_TIMEOUT=10
+      - TEST_AUTH_SERVICE_URL=http://auth-service:5000
+      - TEST_TASK_SERVICE_URL=http://task-service:5000
+      - TEST_FRONTEND_SERVICE_URL=http://frontend-service:5000
+      - TEST_PROXY_TIMEOUT=10
     depends_on:
       auth-service:
         condition: service_healthy
@@ -112,4 +112,3 @@ networks:
 volumes:
   auth-test-data:
   task-test-data:
-
