@@ -48,7 +48,7 @@ def create_app(config_name: str | None = None) -> Flask:
         A fully-configured Flask application with the gateway blueprint
         registered and ready to proxy requests.
     """
-    app = Flask(__name__)
+    app = Flask(__name__, static_folder=None)
     config_class = get_config(config_name)
     app.config.from_object(config_class)
 
