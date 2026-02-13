@@ -104,6 +104,14 @@ def live_server(test_run_id: str) -> Generator[str, None, None]:
     except FileNotFoundError:
         pytest.skip("docker is not installed; set TEST_BASE_URL to run E2E tests")
     except subprocess.CalledProcessError as exc:
+        # Best-effort cleanup in case compose created partial resources
+        # before failing (containers, networks, volumes).
+        subprocess.run(
+            compose_down_cmd,
+            check=False,
+            text=True,
+            capture_output=True,
+        )
         stdout = exc.stdout or ""
         stderr = exc.stderr or ""
         raise RuntimeError(
@@ -222,4 +230,3 @@ def pytest_runtest_makereport(item, call):
                 print(f"\nScreenshot saved: {screenshot_path}")
             except Exception as exc:  # pragma: no cover - best effort logging
                 print(f"\nFailed to capture screenshot: {exc}")
-
