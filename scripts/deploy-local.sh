@@ -26,6 +26,9 @@ case "${ACTION}" in
     echo "Gateway health"
     curl -fsS "http://localhost:5000/api/health" | (command -v jq >/dev/null 2>&1 && jq . || cat)
     echo
+    echo "Frontend health via gateway"
+    curl -fsS "http://localhost:5000/health" | (command -v jq >/dev/null 2>&1 && jq . || cat)
+    echo
     echo "Auth health via gateway"
     curl -fsS "http://localhost:5000/api/auth/health" | (command -v jq >/dev/null 2>&1 && jq . || cat)
     echo

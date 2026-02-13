@@ -3,7 +3,8 @@ Gateway Reverse-Proxy Routes.
 
 This module implements the core reverse-proxy logic of the API gateway.
 Every inbound HTTP request is matched by a Flask route, forwarded to the
-appropriate downstream microservice (auth-service or task-service), and
+appropriate downstream microservice (auth-service, task-service API, or
+frontend-service), and
 the downstream response is relayed back to the caller — transparently.
 
 Because the gateway sits between the client and the real services it must
@@ -315,25 +316,25 @@ def proxy_tasks(path: str) -> tuple[Response, int]:
 
 
 # Catch-all: any request that does NOT match ``/api/auth`` or ``/api/tasks``
-# is forwarded to the task-service.  This allows the task-service to serve
-# its web UI (HTML pages, static assets, etc.) through the gateway
+# is forwarded to the frontend-service. This allows the frontend BFF to serve
+# web UI pages (HTML, static assets, form routes) through the gateway
 # without requiring an explicit route for every possible frontend path.
 @gateway_bp.route("/", defaults={"path": ""}, methods=["GET", "POST", "PUT", "PATCH", "DELETE"])
 @gateway_bp.route("/<path:path>", methods=["GET", "POST", "PUT", "PATCH", "DELETE"])
 def proxy_views(path: str) -> tuple[Response, int]:
     """
-    Catch-all route — forward unmatched paths to the task-service web UI.
+    Catch-all route — forward unmatched paths to the frontend-service web UI.
 
     Flask evaluates routes in registration order, so the more-specific
-    ``/api/auth`` and ``/api/tasks`` routes are matched first.  Anything
-    that falls through lands here and is proxied to the task-service,
-    which serves the browser-facing HTML pages and static assets.
+    ``/api/auth`` and ``/api/tasks`` routes are matched first. Anything
+    that falls through lands here and is proxied to the frontend-service,
+    which serves browser-facing HTML pages and static assets.
 
     Args:
         path: The full request path (may be empty for ``/``).
 
     Returns:
-        The proxied response and status code from the task-service.
+        The proxied response and status code from the frontend-service.
     """
     downstream_path = f"/{path}" if path else "/"
-    return proxy_request(current_app.config["TASK_SERVICE_URL"], downstream_path)
+    return proxy_request(current_app.config["FRONTEND_SERVICE_URL"], downstream_path)

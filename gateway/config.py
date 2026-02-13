@@ -2,10 +2,9 @@
 Gateway Service — Configuration.
 
 Defines environment-specific configuration classes for the API gateway.
-Each class captures the URLs of the downstream microservices that the
-gateway proxies to, as well as operational settings such as request
-timeouts.  The ``get_config`` factory selects the right class based on
-the ``FLASK_ENV`` environment variable (or an explicit key).
+Each class captures the URLs of downstream microservices (auth, task API,
+frontend BFF) that the gateway proxies to, as well as timeout settings.
+The ``get_config`` factory selects the right class based on ``FLASK_ENV``.
 
 Key Concepts Demonstrated:
 - Class-based configuration with inheritance for DRY defaults
@@ -32,8 +31,13 @@ class Config:
     # cluster-internal DNS name; locally it can be overridden via env var.
     AUTH_SERVICE_URL: str = os.environ.get("AUTH_SERVICE_URL", "http://auth-service:5000")
 
-    # URL of the task-management microservice (also serves the web UI).
+    # URL of the task-management API microservice.
     TASK_SERVICE_URL: str = os.environ.get("TASK_SERVICE_URL", "http://task-service:5000")
+
+    # URL of the frontend BFF service that serves HTML pages.
+    FRONTEND_SERVICE_URL: str = os.environ.get(
+        "FRONTEND_SERVICE_URL", "http://frontend-service:5000"
+    )
 
     # Maximum seconds the gateway will wait for a downstream response
     # before returning 502 Bad Gateway.  Kept deliberately short to
@@ -67,6 +71,9 @@ class TestingConfig(Config):
     # Non-routable hostnames ensure tests never leak real HTTP requests.
     AUTH_SERVICE_URL: str = os.environ.get("TEST_AUTH_SERVICE_URL", "http://auth.test")
     TASK_SERVICE_URL: str = os.environ.get("TEST_TASK_SERVICE_URL", "http://tasks.test")
+    FRONTEND_SERVICE_URL: str = os.environ.get(
+        "TEST_FRONTEND_SERVICE_URL", "http://frontend.test"
+    )
     # Aggressive timeout keeps test runs fast when simulating slow backends.
     PROXY_TIMEOUT: int = int(os.environ.get("TEST_PROXY_TIMEOUT", "1"))
 

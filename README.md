@@ -8,20 +8,26 @@ A task management application used to practice SDET workflows in a microservices
                      ┌──────────────┐
    Client ────────►  │   Gateway    │  :5000
                      └──────┬───────┘
-                      ┌─────┴──────┐
-                      │            │
-                ┌─────▼────┐ ┌────▼─────┐
-                │   Auth   │ │  Tasks   │
-                │ Service  │ │ Service  │
-                │  :5010   │ │  :5020   │
-                └──────────┘ └──────────┘
+                            │
+                     ┌──────▼───────┐
+                     │   Frontend   │ :5030
+                     │   Service    │
+                     └──────┬───────┘
+                    ┌───────┴────────┐
+                    │                │
+              ┌─────▼────┐     ┌─────▼────┐
+              │   Auth   │     │  Tasks   │
+              │ Service  │     │ Service  │
+              │  :5010   │     │  :5020   │
+              └──────────┘     └──────────┘
 ```
 
 | Service | Location | External Port | Role |
 |---------|----------|---------------|------|
 | Gateway | `gateway/` | 5000 | HTTP reverse proxy — routes requests to backend services |
 | Auth | `services/auth/` | 5010 | User registration, login, JWT token issuance and verification |
-| Tasks | `services/tasks/` | 5020 | Task CRUD API and web UI (login, register, task management pages) |
+| Tasks | `services/tasks/` | 5020 | Task CRUD REST API (API-only service) |
+| Frontend | `services/frontend/` | 5030 | Server-rendered UI (BFF) that calls auth and task APIs |
 
 ### Routing
 
@@ -31,7 +37,7 @@ The gateway routes requests by URL prefix:
 |---------|-------------|
 | `/api/auth/*` | Auth service |
 | `/api/tasks/*` | Task service |
-| `/*` (everything else) | Task service (web UI) |
+| `/*` (everything else) | Frontend service (web UI) |
 
 ### Authentication
 
@@ -41,7 +47,7 @@ Authentication uses **RS256 JWT tokens** with asymmetric keys across services:
 2. Auth service returns a JWT (24h expiry) containing `user_id`, `username`, `iat`, `exp`
 3. Client sends `Authorization: Bearer <token>` on subsequent requests
 4. Auth service signs tokens with `JWT_PRIVATE_KEY`
-5. Auth and task services verify tokens with `JWT_PUBLIC_KEY`
+5. Frontend and task services verify tokens with `JWT_PUBLIC_KEY`
 6. All task queries are filtered by `user_id` from the token — full tenant isolation
 
 ## Prerequisites
@@ -77,6 +83,7 @@ Verify everything is healthy:
 ```bash
 curl http://localhost:5000/api/health
 curl http://localhost:5000/api/auth/health
+curl http://localhost:5000/health
 ```
 
 Stop and clean up:
@@ -89,7 +96,7 @@ There is also a helper script:
 
 ```bash
 ./scripts/deploy-local.sh up       # start
-./scripts/deploy-local.sh health   # check gateway + auth health
+./scripts/deploy-local.sh health   # check gateway + frontend + auth health
 ./scripts/deploy-local.sh ps       # show running containers
 ./scripts/deploy-local.sh logs     # tail logs
 ./scripts/deploy-local.sh down     # stop and remove volumes
@@ -148,10 +155,11 @@ Tests are organized in layers, from fast/isolated to slow/integrated:
 
 ### Per-service tests (no running services needed)
 
-Each service has its own unit, integration, and contract tests that run in-process using Flask's test client:
+Each service has isolated tests that run in-process using Flask's test client (frontend is currently integration-focused):
 
 ```bash
 cd services/auth && PYTHONPATH=../.. pytest tests -v
+cd services/frontend && PYTHONPATH=../.. pytest tests -v
 cd services/tasks && PYTHONPATH=../.. pytest tests -v
 cd gateway && PYTHONPATH=.. pytest tests -v
 ```
@@ -197,15 +205,22 @@ services/
     config.py
     Dockerfile
     tests/                        Unit, integration, contract tests
+  frontend/                       Frontend BFF service
+    frontend_app/
+      auth.py                     JWT verification helper for session tokens
+      models.py                   UI enums matching task API contract
+      routes/views.py             HTML form routes (login, register, task pages)
+      templates/                  Jinja2 templates
+      static/                     CSS assets
+    config.py
+    Dockerfile
+    tests/                        Integration tests for HTML/UI flow
   tasks/                          Task service
     task_app/
       auth.py                     JWT verification decorator
       models.py                   Task model + enums
       routes/
         api.py                    REST API endpoints
-        views.py                  HTML form routes
-      templates/                  Jinja2 templates (login, register, tasks)
-      static/                     CSS/JS assets
     config.py
     Dockerfile
     tests/                        Unit, integration, contract tests
@@ -256,16 +271,18 @@ All configurable via environment or `.env` (see `.env.example`):
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `JWT_PRIVATE_KEY_PATH` | `keys/dev.private.pem` | Auth-service private signing key path |
-| `JWT_PUBLIC_KEY_PATH` | `keys/dev.public.pem` | JWT verification key path (auth + task) |
+| `JWT_PUBLIC_KEY_PATH` | `keys/dev.public.pem` | JWT verification key path (frontend + task + auth verify endpoint) |
 | `JWT_PRIVATE_KEY_FILE` | `./keys/dev.private.pem` | Host-side private key file for `docker-compose.yml` bind mount |
 | `JWT_PUBLIC_KEY_FILE` | `./keys/dev.public.pem` | Host-side public key file for `docker-compose.yml` bind mount |
 | `TEST_JWT_PRIVATE_KEY_FILE` | `./keys/dev.private.pem` | Host-side private key file for `docker-compose.test.yml` bind mount |
 | `TEST_JWT_PUBLIC_KEY_FILE` | `./keys/dev.public.pem` | Host-side public key file for `docker-compose.test.yml` bind mount |
 | `JWT_EXPIRY_HOURS` | `24` | Token lifetime in hours |
 | `JWT_CLOCK_SKEW_SECONDS` | `30` | Allowed clock drift for token verification |
-| `AUTH_SERVICE_URL` | `http://auth-service:5000` | Auth service base URL (used by task service and gateway) |
-| `AUTH_SERVICE_TIMEOUT` | `5` | Timeout in seconds for auth service calls |
-| `TASK_SERVICE_URL` | `http://task-service:5000` | Task service base URL (used by gateway) |
+| `AUTH_SERVICE_URL` | `http://auth-service:5000` | Auth service base URL (used by frontend and gateway) |
+| `AUTH_SERVICE_TIMEOUT` | `5` | Timeout in seconds for frontend auth service calls |
+| `TASK_SERVICE_URL` | `http://task-service:5000` | Task service base URL (used by frontend and gateway) |
+| `TASK_SERVICE_TIMEOUT` | `5` | Timeout in seconds for frontend task service calls |
+| `FRONTEND_SERVICE_URL` | `http://frontend-service:5000` | Frontend service base URL (used by gateway catch-all routes) |
 | `PROXY_TIMEOUT` | `10` | Gateway proxy timeout in seconds |
 | `DATABASE_URL` | `sqlite:///instance/<service>.db` | SQLAlchemy database URI |
 | `TEST_BASE_URL` | `http://localhost:5000` | Base URL for smoke and E2E tests |

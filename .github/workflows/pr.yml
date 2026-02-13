@@ -9,6 +9,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       auth: ${{ steps.filter.outputs.auth }}
+      frontend: ${{ steps.filter.outputs.frontend }}
       tasks: ${{ steps.filter.outputs.tasks }}
       gateway: ${{ steps.filter.outputs.gateway }}
       cross: ${{ steps.filter.outputs.cross }}
@@ -27,6 +28,12 @@ jobs:
               - 'requirements-dev.txt'
             tasks:
               - 'services/tasks/**'
+              - 'shared/**'
+              - 'contracts/**'
+              - 'pytest.ini'
+              - 'requirements-dev.txt'
+            frontend:
+              - 'services/frontend/**'
               - 'shared/**'
               - 'contracts/**'
               - 'pytest.ini'
@@ -88,6 +95,19 @@ jobs:
       - run: python -m pip install --upgrade pip
       - run: pip install -r requirements-dev.txt -r services/tasks/requirements.txt
       - run: cd services/tasks && PYTHONPATH=../.. pytest tests -v
+
+  frontend-tests:
+    needs: [lint, changes]
+    if: needs.changes.outputs.frontend == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - run: python -m pip install --upgrade pip
+      - run: pip install -r requirements-dev.txt -r services/frontend/requirements.txt
+      - run: cd services/frontend && PYTHONPATH=../.. pytest tests -v
 
   gateway-tests:
     needs: [lint, changes]

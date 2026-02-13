@@ -39,8 +39,6 @@ services:
       - FLASK_ENV=production
       - JWT_PUBLIC_KEY_PATH=/app/keys/dev.public.pem
       - DATABASE_URL=sqlite:///instance/tasks.db
-      - AUTH_SERVICE_URL=http://auth-service:5000
-      - AUTH_SERVICE_TIMEOUT=5
       - ENVIRONMENT=dev
     volumes:
       - ${JWT_PUBLIC_KEY_FILE:-./keys/dev.public.pem}:/app/keys/dev.public.pem:ro
@@ -59,6 +57,37 @@ services:
     networks:
       - taskapp-net
 
+  frontend-service:
+    build:
+      context: .
+      dockerfile: services/frontend/Dockerfile
+    ports:
+      - "5030:5000"
+    environment:
+      - FLASK_ENV=production
+      - JWT_PUBLIC_KEY_PATH=/app/keys/dev.public.pem
+      - AUTH_SERVICE_URL=http://auth-service:5000
+      - TASK_SERVICE_URL=http://task-service:5000
+      - AUTH_SERVICE_TIMEOUT=5
+      - TASK_SERVICE_TIMEOUT=5
+      - ENVIRONMENT=dev
+    volumes:
+      - ${JWT_PUBLIC_KEY_FILE:-./keys/dev.public.pem}:/app/keys/dev.public.pem:ro
+    container_name: frontend-service
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://localhost:5000/health')",
+        ]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - taskapp-net
+
   gateway:
     build:
       context: .
@@ -69,12 +98,15 @@ services:
       - FLASK_ENV=production
       - AUTH_SERVICE_URL=http://auth-service:5000
       - TASK_SERVICE_URL=http://task-service:5000
+      - FRONTEND_SERVICE_URL=http://frontend-service:5000
       - PROXY_TIMEOUT=10
     container_name: gateway
     depends_on:
       auth-service:
         condition: service_healthy
       task-service:
+        condition: service_healthy
+      frontend-service:
         condition: service_healthy
     networks:
       - taskapp-net

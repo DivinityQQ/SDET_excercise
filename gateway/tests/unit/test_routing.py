@@ -76,8 +76,8 @@ def test_tasks_route_proxies_to_task_service(client, monkeypatch):
     assert captured["url"] == "http://task-service.test/api/tasks"
 
 
-def test_root_route_proxies_to_task_service_views(client, monkeypatch):
-    """Test that the root path (/) is forwarded to the task service for view rendering."""
+def test_root_route_proxies_to_frontend_service_views(client, monkeypatch):
+    """Test that the root path (/) is forwarded to the frontend service for view rendering."""
     # Arrange
     captured = {}
 
@@ -92,4 +92,4 @@ def test_root_route_proxies_to_task_service_views(client, monkeypatch):
 
     # Assert
     assert response.status_code == 200
-    assert captured["url"] == "http://task-service.test/"
+    assert captured["url"] == "http://frontend.test/"

@@ -1,8 +1,8 @@
 """
 Configuration Classes for the Task Service.
 
-Centralises all environment-dependent settings (database URIs, JWT keys,
-cross-service URLs) into a hierarchy of configuration classes.  The base
+Centralises all environment-dependent settings (database URIs, JWT keys)
+into a hierarchy of configuration classes. The base
 ``Config`` class defines sensible development defaults, while subclasses
 override only what differs per environment.
 
@@ -10,7 +10,6 @@ Key Concepts Demonstrated:
 - Class-based configuration with inheritance
 - Environment-variable overrides for twelve-factor app compliance
 - Separate configuration profiles for development, testing, and production
-- Cross-service settings (``AUTH_SERVICE_URL``) for microservice communication
 """
 
 from __future__ import annotations
@@ -73,11 +72,6 @@ class Config:
             auth service.
         JWT_CLOCK_SKEW_SECONDS: Allowed clock drift (in seconds) when
             validating JWT ``exp`` / ``iat`` claims.
-        AUTH_SERVICE_URL: Base URL of the auth service for cross-service
-            HTTP calls (login, registration).
-        AUTH_SERVICE_TIMEOUT: Timeout in seconds for HTTP requests to the
-            auth service, preventing indefinite hangs if the auth service
-            is unresponsive.
     """
 
     SECRET_KEY: str = os.environ.get(
@@ -92,11 +86,6 @@ class Config:
     # Tolerate minor clock differences between services when checking exp/iat.
     JWT_CLOCK_SKEW_SECONDS: int = int(os.environ.get("JWT_CLOCK_SKEW_SECONDS", "30"))
 
-    # Cross-service communication: the task service calls the auth service
-    # for login and registration on behalf of the browser-facing web UI.
-    AUTH_SERVICE_URL: str = os.environ.get("AUTH_SERVICE_URL", "http://localhost:5010")
-    # Guard against slow or unreachable auth service responses.
-    AUTH_SERVICE_TIMEOUT: int = int(os.environ.get("AUTH_SERVICE_TIMEOUT", "5"))
 
 
 class DevelopmentConfig(Config):
@@ -122,9 +111,6 @@ class TestingConfig(Config):
     Attributes:
         SQLALCHEMY_DATABASE_URI: Points to a dedicated test database file.
         JWT_PUBLIC_KEY: Test public key for verifying test-minted JWTs.
-        AUTH_SERVICE_URL: A placeholder URL; tests are expected to mock
-            cross-service calls rather than requiring a live auth service.
-        AUTH_SERVICE_TIMEOUT: Kept short (1 s) to fail fast in tests.
         WTF_CSRF_ENABLED: Disabled so tests can POST forms without tokens.
     """
 
@@ -135,8 +121,6 @@ class TestingConfig(Config):
         f"sqlite:///{BASE_DIR / 'instance' / 'test_tasks.db'}?check_same_thread=False",
     )
     SQLALCHEMY_ENGINE_OPTIONS: dict = {"pool_pre_ping": True}
-    AUTH_SERVICE_URL: str = os.environ.get("TEST_AUTH_SERVICE_URL", "http://auth-service")
-    AUTH_SERVICE_TIMEOUT: int = int(os.environ.get("TEST_AUTH_SERVICE_TIMEOUT", "1"))
     WTF_CSRF_ENABLED: bool = False
 
 
