@@ -9,7 +9,7 @@ services:
       - FLASK_ENV=production
       - JWT_PRIVATE_KEY_PATH=/app/keys/dev.private.pem
       - JWT_PUBLIC_KEY_PATH=/app/keys/dev.public.pem
-      - DATABASE_URL=sqlite:///instance/auth.db
+      - DATABASE_URL=sqlite:///auth.db
       - ENVIRONMENT=dev
     volumes:
       - ${JWT_PRIVATE_KEY_FILE:-./keys/dev.private.pem}:/app/keys/dev.private.pem:ro
@@ -38,7 +38,7 @@ services:
     environment:
       - FLASK_ENV=production
       - JWT_PUBLIC_KEY_PATH=/app/keys/dev.public.pem
-      - DATABASE_URL=sqlite:///instance/tasks.db
+      - DATABASE_URL=sqlite:///tasks.db
       - ENVIRONMENT=dev
     volumes:
       - ${JWT_PUBLIC_KEY_FILE:-./keys/dev.public.pem}:/app/keys/dev.public.pem:ro
@@ -114,4 +114,3 @@ services:
 networks:
   taskapp-net:
     driver: bridge
-
