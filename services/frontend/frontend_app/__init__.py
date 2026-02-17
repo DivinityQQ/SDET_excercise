@@ -1,8 +1,21 @@
 """
 Frontend service Flask application factory.
 
-This service is a stateless BFF that serves server-rendered pages and
-orchestrates calls to the auth and task APIs.
+Provides the ``create_app`` factory function that assembles the frontend
+micro-service.  This service acts as a stateless Backend-for-Frontend (BFF):
+it serves server-rendered HTML pages via Jinja templates and orchestrates
+calls to the auth and task REST APIs on behalf of the browser.
+
+The BFF never accesses a database directly -- all persistence is delegated
+to the downstream micro-services, keeping this layer thin and focused on
+presentation concerns (form handling, flash messages, session cookies).
+
+Key Concepts Demonstrated:
+- Application factory pattern (``create_app``)
+- Backend-for-Frontend (BFF) architecture
+- Server-side session management with JWT tokens
+- Blueprint-based route registration
+- Lazy import to avoid circular dependencies
 """
 
 from __future__ import annotations
@@ -28,11 +41,19 @@ def create_app(config_name: str | None = None) -> Flask:
     """
     Create and configure the frontend service application.
 
+    Instantiates the Flask app, loads the appropriate configuration object,
+    reads the JWT public key (used to verify session tokens issued by the
+    auth service), and registers the views blueprint.
+
     Args:
-        config_name: Optional config environment key.
+        config_name: Optional configuration environment name
+            (``"development"``, ``"testing"``, ``"production"``).  When
+            *None*, the value is read from the ``FLASK_ENV`` environment
+            variable, defaulting to ``"development"``.
 
     Returns:
-        Configured Flask app instance.
+        A fully configured :class:`~flask.Flask` application instance
+        ready to serve HTML pages and proxy API requests.
     """
     app = Flask(__name__, instance_relative_config=True)
     config_class = get_config(config_name)
@@ -43,6 +64,8 @@ def create_app(config_name: str | None = None) -> Flask:
 
     logger.info("Creating frontend service app with config: %s", config_class.__name__)
 
+    # Import inside the factory to avoid circular imports -- the blueprint
+    # module references helpers from this package, which must exist first.
     from .routes.views import views_bp
 
     app.register_blueprint(views_bp)

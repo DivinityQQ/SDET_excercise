@@ -18,6 +18,7 @@ def test_api_routes_work_without_external_auth_calls(
     api_headers,
 ):
     """API routes work with a valid token and no auth-service calls."""
+    # Arrange -- fixtures provide the test client and auth headers
 
     # Act
     create_response = client.post(
@@ -36,6 +37,7 @@ def test_api_routes_work_without_external_auth_calls(
 
 def test_task_health_endpoint_is_independent(client, db_session):
     """Health endpoint works without any external service dependency."""
+    # Arrange -- fixtures provide the test client and database session
 
     # Act
     response = client.get("/api/health")

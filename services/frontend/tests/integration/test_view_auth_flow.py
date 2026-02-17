@@ -1,5 +1,18 @@
 """
 Integration tests for frontend-service HTML authentication and task views.
+
+Exercises the frontend BFF routes (login, register, logout, task list)
+through the Flask test client with monkeypatched HTTP calls to the
+downstream auth and task services.  This approach verifies the full
+request/response cycle (form submission, session management, redirects,
+template rendering) without requiring live micro-services.
+
+Key SDET Concepts Demonstrated:
+- Integration testing through the full HTTP request/response cycle
+- Monkeypatching external HTTP calls for isolated service testing
+- Session-state assertions (token storage and cleanup)
+- Redirect-chain verification for authentication flows
+- Fake response objects as lightweight test doubles
 """
 
 from __future__ import annotations
@@ -12,25 +25,41 @@ pytestmark = pytest.mark.integration
 
 
 class _FakeResponse:
-    """Minimal stand-in for requests.Response."""
+    """
+    Minimal stand-in for :class:`requests.Response`.
+
+    Provides just enough interface (``status_code`` and ``json()``) to
+    satisfy the frontend route handlers, which only inspect these two
+    attributes when processing downstream service replies.
+
+    Attributes:
+        status_code: HTTP status code returned by the fake response.
+    """
 
     def __init__(self, status_code: int, payload: dict):
         self.status_code = status_code
         self._payload = payload
 
     def json(self):
+        """Return the pre-configured JSON payload."""
         return self._payload
 
 
 def test_unauthenticated_user_redirected_to_login(client):
-    """Accessing root without session redirects to /login."""
+    """Test that accessing the root URL without a session token redirects to /login."""
+    # Arrange -- no auth token is present in session
+
+    # Act
     response = client.get("/", follow_redirects=False)
+
+    # Assert
     assert response.status_code == 302
     assert response.headers["Location"].endswith("/login")
 
 
 def test_login_stores_token_in_session(client, monkeypatch):
-    """Successful login stores JWT in session and redirects home."""
+    """Test that a successful login stores the JWT in session and redirects home."""
+    # Arrange
     token = create_test_token(
         user_id=1,
         username="demo",
@@ -44,12 +73,14 @@ def test_login_stores_token_in_session(client, monkeypatch):
         ),
     )
 
+    # Act
     response = client.post(
         "/login",
         data={"username": "demo", "password": "secret"},
         follow_redirects=False,
     )
 
+    # Assert
     assert response.status_code == 302
     assert response.headers["Location"].endswith("/")
     with client.session_transaction() as sess:
@@ -57,29 +88,35 @@ def test_login_stores_token_in_session(client, monkeypatch):
 
 
 def test_register_success_redirects_to_login(client, monkeypatch):
-    """Successful registration redirects to /login."""
+    """Test that a successful registration redirects to /login."""
+    # Arrange
     monkeypatch.setattr(
         "frontend_app.routes.views.requests.post",
         lambda *_, **__: _FakeResponse(status_code=201, payload={"user": {"id": 1}}),
     )
 
+    # Act
     response = client.post(
         "/register",
         data={"username": "new_user", "email": "new_user@example.com", "password": "secret"},
         follow_redirects=False,
     )
 
+    # Assert
     assert response.status_code == 302
     assert response.headers["Location"].endswith("/login")
 
 
 def test_logout_clears_session(client):
-    """POST /logout removes auth_token from session and redirects /login."""
+    """Test that POST /logout removes auth_token from session and redirects to /login."""
+    # Arrange
     with client.session_transaction() as sess:
         sess["auth_token"] = "token-to-clear"
 
+    # Act
     response = client.post("/logout", follow_redirects=False)
 
+    # Assert
     assert response.status_code == 302
     assert response.headers["Location"].endswith("/login")
     with client.session_transaction() as sess:
@@ -87,7 +124,8 @@ def test_logout_clears_session(client):
 
 
 def test_authenticated_index_fetches_tasks_from_task_api(client, monkeypatch):
-    """Authenticated index should call task API and render task title."""
+    """Test that the authenticated index calls the task API and renders task titles."""
+    # Arrange
     token = create_test_token(
         user_id=1,
         username="demo",
@@ -123,6 +161,9 @@ def test_authenticated_index_fetches_tasks_from_task_api(client, monkeypatch):
 
     monkeypatch.setattr("frontend_app.routes.views.requests.request", _fake_request)
 
+    # Act
     response = client.get("/")
+
+    # Assert
     assert response.status_code == 200
     assert b"Task from API" in response.data

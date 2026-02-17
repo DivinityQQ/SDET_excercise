@@ -128,6 +128,7 @@ def live_server(test_run_id: str) -> Generator[str, None, None]:
 
 @pytest.fixture(scope="session")
 def browser_context_args():
+    """Default Playwright browser-context options for E2E tests."""
     return {
         "viewport": {"width": 1280, "height": 720},
         "ignore_https_errors": True,
@@ -138,6 +139,7 @@ def browser_context_args():
 def context(
     browser: Browser, browser_context_args: dict
 ) -> Generator[BrowserContext, None, None]:
+    """Fresh browser context for each test function."""
     context = browser.new_context(**browser_context_args)
     yield context
     context.close()
@@ -145,6 +147,7 @@ def context(
 
 @pytest.fixture(scope="function")
 def page(context: BrowserContext) -> Generator[Page, None, None]:
+    """Fresh browser page within the function-scoped context."""
     page = context.new_page()
     yield page
     page.close()
@@ -168,11 +171,13 @@ def credential_factory(test_run_id: str) -> Callable[[str], dict[str, str]]:
 
 @pytest.fixture
 def login_page(page: Page, live_server: str) -> LoginPage:
+    """LoginPage instance bound to the current page and live server."""
     return LoginPage(page, live_server)
 
 
 @pytest.fixture
 def register_page(page: Page, live_server: str) -> RegisterPage:
+    """RegisterPage instance bound to the current page and live server."""
     return RegisterPage(page, live_server)
 
 
@@ -202,11 +207,13 @@ def authenticated_user(
 
 @pytest.fixture
 def task_list_page(page: Page, live_server: str, authenticated_user) -> TaskListPage:
+    """Authenticated TaskListPage instance for the current test."""
     return TaskListPage(page, live_server)
 
 
 @pytest.fixture
 def task_form_page(page: Page, live_server: str, authenticated_user) -> TaskFormPage:
+    """Authenticated TaskFormPage pre-navigated to the new-task form."""
     task_form = TaskFormPage(page, live_server)
     task_form.navigate()
     return task_form

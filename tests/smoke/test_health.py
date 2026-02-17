@@ -72,6 +72,7 @@ def test_full_smoke_register_login_and_task_flow():
     email = f"smoke_{run_id}@example.com"
     password = "SmokePass123!"
 
+    # Act & Assert -- each step validates before proceeding to the next
     # ===== REGISTER =====
     register_response = requests.post(
         f"{BASE_URL}/api/auth/register",

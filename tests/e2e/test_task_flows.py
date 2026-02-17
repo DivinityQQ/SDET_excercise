@@ -87,6 +87,7 @@ class TestAuthenticationFlow:
         # Arrange
         credentials = credential_factory("journey")
 
+        # Act
         # ===== REGISTER =====
         register_page.navigate()
         register_page.register(
@@ -205,6 +206,7 @@ class TestTaskEditFlow:
 
     def test_edit_task_updates_values(self, task_form_page, task_list_page, page):
         """Test that editing a task persists the new values."""
+        # Arrange
         # ===== CREATE ORIGINAL TASK =====
         task_form_page.create_task(
             title="Original Title",
@@ -212,6 +214,7 @@ class TestTaskEditFlow:
             priority="low",
         )
 
+        # Act
         # ===== EDIT THE TASK =====
         task_list_page.navigate()
         page.locator("[data-testid^='edit-btn-']").first.click()
@@ -222,6 +225,7 @@ class TestTaskEditFlow:
         task_form_page.select_priority("high")
         task_form_page.submit()
 
+        # Assert
         # ===== VERIFY =====
         task_form_page.assert_flash_success_visible()
         task_list_page.navigate()
@@ -260,6 +264,9 @@ class TestCompleteTaskLifecycle:
     @pytest.mark.slow
     def test_full_task_lifecycle(self, task_form_page, task_list_page, page):
         """Test the complete CRUD lifecycle: create, view, edit, then delete."""
+        # Arrange -- fixtures provide the authenticated browser session
+
+        # Act & Assert -- each lifecycle phase validates before proceeding
         # ===== CREATE =====
         task_form_page.create_task(
             title="Lifecycle Test Task",
@@ -324,9 +331,11 @@ class TestTaskEstimatedMinutesFlow:
 
     def test_edit_task_estimated_minutes(self, task_form_page, task_list_page, page):
         """Test that editing the estimate updates the displayed badge."""
+        # Arrange
         # ===== CREATE TASK WITH INITIAL ESTIMATE =====
         task_form_page.create_task(title="Task to Update Estimate", estimated_minutes=30)
 
+        # Act
         # ===== EDIT THE ESTIMATE =====
         task_list_page.navigate()
         page.locator("[data-testid^='edit-btn-']").first.click()
@@ -336,6 +345,7 @@ class TestTaskEstimatedMinutesFlow:
         task_form_page.submit()
         task_form_page.assert_flash_success_visible()
 
+        # Assert
         # ===== VERIFY =====
         task_list_page.navigate()
         estimate_badge = page.locator("[data-testid^='task-estimate-']").first
@@ -381,6 +391,7 @@ class TestMultiUserE2E:
         # Separate browser contexts give each user their own cookie jar
         context_1 = browser.new_context(viewport={"width": 1280, "height": 720})
         context_2 = browser.new_context(viewport={"width": 1280, "height": 720})
+        # Act
         try:
             # ===== USER 1: REGISTER, LOGIN, CREATE TASK =====
             page_1 = context_1.new_page()
