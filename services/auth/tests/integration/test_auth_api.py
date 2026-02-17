@@ -18,7 +18,7 @@ from __future__ import annotations
 
 import pytest
 
-from auth_app.jwt import create_token
+from services.auth.auth_app.jwt import create_token
 
 pytestmark = pytest.mark.integration
 

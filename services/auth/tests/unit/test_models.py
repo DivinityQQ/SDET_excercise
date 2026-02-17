@@ -16,7 +16,7 @@ from __future__ import annotations
 import pytest
 from sqlalchemy.exc import IntegrityError
 
-from auth_app.models import User
+from services.auth.auth_app.models import User
 
 pytestmark = pytest.mark.unit
 

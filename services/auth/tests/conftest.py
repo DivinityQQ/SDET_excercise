@@ -26,8 +26,8 @@ os.environ["FLASK_ENV"] = "testing"
 os.environ["TEST_JWT_PRIVATE_KEY"] = TEST_PRIVATE_KEY
 os.environ["TEST_JWT_PUBLIC_KEY"] = TEST_PUBLIC_KEY
 
-from auth_app import create_app, db
-from auth_app.models import User
+from services.auth.auth_app import create_app, db
+from services.auth.auth_app.models import User
 
 
 @pytest.fixture(scope="session")

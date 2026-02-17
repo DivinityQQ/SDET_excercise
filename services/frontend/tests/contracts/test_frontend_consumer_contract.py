@@ -27,7 +27,7 @@ from typing import Any
 
 import pytest
 
-from frontend_app.models import TaskPriority, TaskStatus
+from services.frontend.frontend_app.models import TaskPriority, TaskStatus
 
 yaml = pytest.importorskip("yaml", reason="Install pyyaml for contract tests.")
 

@@ -81,7 +81,7 @@ jobs:
           python-version: "3.13"
       - run: python -m pip install --upgrade pip
       - run: pip install -r requirements-dev.txt -r services/auth/requirements.txt
-      - run: cd services/auth && PYTHONPATH=../.. pytest tests -v
+      - run: cd services/auth && PYTHONPATH=../.. python -m pytest tests -v
 
   task-tests:
     needs: [lint, changes]
@@ -94,7 +94,7 @@ jobs:
           python-version: "3.13"
       - run: python -m pip install --upgrade pip
       - run: pip install -r requirements-dev.txt -r services/tasks/requirements.txt
-      - run: cd services/tasks && PYTHONPATH=../.. pytest tests -v
+      - run: cd services/tasks && PYTHONPATH=../.. python -m pytest tests -v
 
   frontend-tests:
     needs: [lint, changes]
@@ -107,7 +107,7 @@ jobs:
           python-version: "3.13"
       - run: python -m pip install --upgrade pip
       - run: pip install -r requirements-dev.txt -r services/frontend/requirements.txt
-      - run: cd services/frontend && PYTHONPATH=../.. pytest tests -v
+      - run: cd services/frontend && PYTHONPATH=../.. python -m pytest tests -v
 
   gateway-tests:
     needs: [lint, changes]
@@ -120,7 +120,7 @@ jobs:
           python-version: "3.13"
       - run: python -m pip install --upgrade pip
       - run: pip install -r requirements-dev.txt -r gateway/requirements.txt
-      - run: cd gateway && PYTHONPATH=.. pytest tests -v
+      - run: cd gateway && PYTHONPATH=.. python -m pytest tests -v
 
   cross-service-tests:
     needs: [lint, changes]
@@ -133,7 +133,7 @@ jobs:
           python-version: "3.13"
       - run: python -m pip install --upgrade pip
       - run: pip install -r requirements-dev.txt -r services/auth/requirements.txt -r services/tasks/requirements.txt
-      - run: PYTHONPATH=. pytest tests/cross_service -v
+      - run: PYTHONPATH=. python -m pytest tests/cross_service -v
 
   ui-smoke:
     needs: [lint, changes]
@@ -157,4 +157,3 @@ jobs:
       - run: TEST_BASE_URL=http://localhost:5000 pytest tests/smoke -v
       - if: always()
         run: docker compose -p taskapp-test -f docker-compose.test.yml down -v --remove-orphans
-

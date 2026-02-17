@@ -47,7 +47,7 @@ def test_auth_route_proxies_to_auth_service(client, monkeypatch):
         captured.update(kwargs)
         return _FakeResponse()
 
-    monkeypatch.setattr("gateway_app.routes.requests.request", _fake_request)
+    monkeypatch.setattr("gateway.gateway_app.routes.requests.request", _fake_request)
 
     # Act
     response = client.post("/api/auth/login", json={"username": "u", "password": "p"})
@@ -66,7 +66,7 @@ def test_tasks_route_proxies_to_task_service(client, monkeypatch):
         captured.update(kwargs)
         return _FakeResponse()
 
-    monkeypatch.setattr("gateway_app.routes.requests.request", _fake_request)
+    monkeypatch.setattr("gateway.gateway_app.routes.requests.request", _fake_request)
 
     # Act
     response = client.get("/api/tasks")
@@ -85,7 +85,7 @@ def test_root_route_proxies_to_frontend_service_views(client, monkeypatch):
         captured.update(kwargs)
         return _FakeResponse()
 
-    monkeypatch.setattr("gateway_app.routes.requests.request", _fake_request)
+    monkeypatch.setattr("gateway.gateway_app.routes.requests.request", _fake_request)
 
     # Act
     response = client.get("/")

@@ -15,11 +15,11 @@ jobs:
           python-version: "3.13"
       - run: python -m pip install --upgrade pip
       - run: pip install -r requirements-dev.txt -r services/auth/requirements.txt -r services/frontend/requirements.txt -r services/tasks/requirements.txt -r gateway/requirements.txt
-      - run: cd services/auth && PYTHONPATH=../.. pytest tests -v
-      - run: cd services/frontend && PYTHONPATH=../.. pytest tests -v
-      - run: cd services/tasks && PYTHONPATH=../.. pytest tests -v
-      - run: cd gateway && PYTHONPATH=.. pytest tests -v
-      - run: PYTHONPATH=. pytest tests/cross_service -v
+      - run: cd services/auth && PYTHONPATH=../.. python -m pytest tests -v
+      - run: cd services/frontend && PYTHONPATH=../.. python -m pytest tests -v
+      - run: cd services/tasks && PYTHONPATH=../.. python -m pytest tests -v
+      - run: cd gateway && PYTHONPATH=.. python -m pytest tests -v
+      - run: PYTHONPATH=. python -m pytest tests/cross_service -v
 
   nightly-ui:
     runs-on: ubuntu-latest
@@ -41,4 +41,3 @@ jobs:
       - run: TEST_BASE_URL=http://localhost:5000 pytest tests/smoke -v
       - if: always()
         run: docker compose -p taskapp-nightly -f docker-compose.test.yml down -v --remove-orphans
-

@@ -56,7 +56,7 @@ def create_app(config_name: str | None = None) -> Flask:
 
     # Import inside the factory to avoid circular imports — the blueprint
     # references current_app, which requires an active application context.
-    from gateway_app.routes import gateway_bp
+    from .routes import gateway_bp
 
     app.register_blueprint(gateway_bp)
     return app

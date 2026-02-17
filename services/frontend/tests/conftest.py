@@ -23,7 +23,7 @@ from shared.test_helpers import TEST_PUBLIC_KEY
 os.environ["FLASK_ENV"] = "testing"
 os.environ["TEST_JWT_PUBLIC_KEY"] = TEST_PUBLIC_KEY
 
-from frontend_app import create_app
+from services.frontend.frontend_app import create_app
 
 
 @pytest.fixture(scope="session")

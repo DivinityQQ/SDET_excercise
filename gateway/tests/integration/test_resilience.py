@@ -52,7 +52,7 @@ def test_auth_service_timeout_returns_502(client, monkeypatch):
     """Test that a downstream timeout is surfaced as a 502 with a clear message."""
     # Arrange
     monkeypatch.setattr(
-        "gateway_app.routes.requests.request",
+        "gateway.gateway_app.routes.requests.request",
         lambda **_: (_ for _ in ()).throw(requests.Timeout("timeout")),
     )
 
@@ -68,7 +68,7 @@ def test_task_service_unreachable_returns_502(client, monkeypatch):
     """Test that an unreachable service is surfaced as a 502 with a clear message."""
     # Arrange
     monkeypatch.setattr(
-        "gateway_app.routes.requests.request",
+        "gateway.gateway_app.routes.requests.request",
         lambda **_: (_ for _ in ()).throw(requests.ConnectionError("unreachable")),
     )
 
@@ -84,7 +84,7 @@ def test_downstream_500_is_propagated(client, monkeypatch):
     """Test that a 500 from the downstream service is forwarded to the caller."""
     # Arrange
     monkeypatch.setattr(
-        "gateway_app.routes.requests.request",
+        "gateway.gateway_app.routes.requests.request",
         lambda **_: _FakeResponse(status_code=500),
     )
 

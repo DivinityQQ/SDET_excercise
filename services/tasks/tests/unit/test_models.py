@@ -17,7 +17,7 @@ from datetime import datetime, timezone
 
 import pytest
 
-from task_app.models import Task, TaskPriority, TaskStatus
+from services.tasks.task_app.models import Task, TaskPriority, TaskStatus
 
 pytestmark = pytest.mark.unit
 

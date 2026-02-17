@@ -19,7 +19,7 @@ import json
 
 import pytest
 
-from task_app.models import TaskPriority, TaskStatus
+from services.tasks.task_app.models import TaskPriority, TaskStatus
 
 pytestmark = pytest.mark.integration
 

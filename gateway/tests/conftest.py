@@ -25,7 +25,7 @@ os.environ["TEST_TASK_SERVICE_URL"] = "http://task-service.test"
 os.environ["TEST_FRONTEND_SERVICE_URL"] = "http://frontend.test"
 os.environ["TEST_PROXY_TIMEOUT"] = "1"
 
-from gateway_app import create_app
+from gateway.gateway_app import create_app
 
 
 @pytest.fixture(scope="session")

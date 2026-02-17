@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import logging
 import os
+from pathlib import Path
 
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
@@ -36,6 +37,20 @@ logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
 )
 logger = logging.getLogger(__name__)
+
+
+def _ensure_sqlite_db_parent_exists(database_uri: str) -> None:
+    """Create parent directories for file-based SQLite URIs when missing."""
+    sqlite_prefix = "sqlite:///"
+    if not database_uri.startswith(sqlite_prefix):
+        return
+
+    sqlite_path = database_uri[len(sqlite_prefix) :].split("?", 1)[0]
+    if sqlite_path == ":memory:":
+        return
+
+    db_parent = Path(sqlite_path).parent
+    db_parent.mkdir(parents=True, exist_ok=True)
 
 
 def create_app(config_name: str | None = None) -> Flask:
@@ -69,6 +84,7 @@ def create_app(config_name: str | None = None) -> Flask:
 
     # Ensure the instance directory exists for the SQLite database file
     os.makedirs(app.instance_path, exist_ok=True)
+    _ensure_sqlite_db_parent_exists(app.config.get("SQLALCHEMY_DATABASE_URI", ""))
 
     # Bind the shared SQLAlchemy instance to this application
     db.init_app(app)

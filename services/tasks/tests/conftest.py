@@ -31,8 +31,8 @@ from shared.test_helpers import (
 os.environ["FLASK_ENV"] = "testing"
 # Task testing config resolves only TEST_JWT_PUBLIC_KEY.
 os.environ["TEST_JWT_PUBLIC_KEY"] = TEST_PUBLIC_KEY
-from task_app import create_app, db
-from task_app.models import Task, TaskPriority, TaskStatus
+from services.tasks.task_app import create_app, db
+from services.tasks.task_app.models import Task, TaskPriority, TaskStatus
 
 fake = Faker()
 

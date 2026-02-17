@@ -19,7 +19,7 @@ from datetime import datetime, timedelta, timezone
 import jwt
 import pytest
 
-from auth_app.jwt import create_token
+from services.auth.auth_app.jwt import create_token
 from shared.test_helpers import TEST_PRIVATE_KEY, TEST_PUBLIC_KEY
 
 pytestmark = pytest.mark.unit

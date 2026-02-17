@@ -23,7 +23,7 @@ import pytest
 from flask import Flask, jsonify, g
 
 from shared.test_helpers import TEST_PRIVATE_KEY, TEST_PUBLIC_KEY, generate_throwaway_key_pair
-from task_app.auth import require_auth, verify_token
+from services.tasks.task_app.auth import require_auth, verify_token
 
 pytestmark = pytest.mark.unit
 
