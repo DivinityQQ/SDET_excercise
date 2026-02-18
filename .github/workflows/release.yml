@@ -23,6 +23,9 @@ jobs:
           - name: task-service
             dockerfile: services/tasks/Dockerfile
             image_suffix: task-service
+          - name: frontend-service
+            dockerfile: services/frontend/Dockerfile
+            image_suffix: frontend-service
           - name: gateway
             dockerfile: gateway/Dockerfile
             image_suffix: gateway
@@ -52,10 +55,36 @@ jobs:
     needs: build-and-push-images
     runs-on: ubuntu-latest
     environment: staging
+    permissions:
+      contents: read
+      packages: read
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/generate-keys
-      - run: docker compose -f docker-compose.yml up -d --build
+      - uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Prepare release image overrides
+        run: |
+          cat > docker-compose.release.yml <<EOF
+          services:
+            auth-service:
+              image: ${REGISTRY}/${GITHUB_REPOSITORY,,}-auth-service:${GITHUB_REF_NAME}
+              build: null
+            task-service:
+              image: ${REGISTRY}/${GITHUB_REPOSITORY,,}-task-service:${GITHUB_REF_NAME}
+              build: null
+            frontend-service:
+              image: ${REGISTRY}/${GITHUB_REPOSITORY,,}-frontend-service:${GITHUB_REF_NAME}
+              build: null
+            gateway:
+              image: ${REGISTRY}/${GITHUB_REPOSITORY,,}-gateway:${GITHUB_REF_NAME}
+              build: null
+          EOF
+      - run: docker compose -f docker-compose.yml -f docker-compose.release.yml pull
+      - run: docker compose -f docker-compose.yml -f docker-compose.release.yml up -d --no-build
       - name: Wait for health checks
         run: |
           for i in {1..45}; do
@@ -69,16 +98,42 @@ jobs:
       - run: pip install -r requirements-dev.txt
       - run: TEST_BASE_URL=http://localhost:5000 pytest tests/smoke -v
       - if: always()
-        run: docker compose -f docker-compose.yml down -v --remove-orphans
+        run: docker compose -f docker-compose.yml -f docker-compose.release.yml down -v --remove-orphans
 
   production-smoke:
     needs: staging-e2e
     runs-on: ubuntu-latest
     environment: production
+    permissions:
+      contents: read
+      packages: read
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/generate-keys
-      - run: docker compose -f docker-compose.yml up -d --build
+      - uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Prepare release image overrides
+        run: |
+          cat > docker-compose.release.yml <<EOF
+          services:
+            auth-service:
+              image: ${REGISTRY}/${GITHUB_REPOSITORY,,}-auth-service:${GITHUB_REF_NAME}
+              build: null
+            task-service:
+              image: ${REGISTRY}/${GITHUB_REPOSITORY,,}-task-service:${GITHUB_REF_NAME}
+              build: null
+            frontend-service:
+              image: ${REGISTRY}/${GITHUB_REPOSITORY,,}-frontend-service:${GITHUB_REF_NAME}
+              build: null
+            gateway:
+              image: ${REGISTRY}/${GITHUB_REPOSITORY,,}-gateway:${GITHUB_REF_NAME}
+              build: null
+          EOF
+      - run: docker compose -f docker-compose.yml -f docker-compose.release.yml pull
+      - run: docker compose -f docker-compose.yml -f docker-compose.release.yml up -d --no-build
       - name: Wait for health checks
         run: |
           for i in {1..45}; do
@@ -92,5 +147,4 @@ jobs:
       - run: pip install -r requirements-dev.txt
       - run: TEST_BASE_URL=http://localhost:5000 pytest tests/smoke -v
       - if: always()
-        run: docker compose -f docker-compose.yml down -v --remove-orphans
-
+        run: docker compose -f docker-compose.yml -f docker-compose.release.yml down -v --remove-orphans
