@@ -1,0 +1,114 @@
+name: taskapp-test
+
+services:
+  auth-service:
+    build:
+      context: .
+      dockerfile: services/auth/Dockerfile
+    environment:
+      - FLASK_ENV=testing
+      - TEST_JWT_PRIVATE_KEY_PATH=/app/keys/dev.private.pem
+      - TEST_JWT_PUBLIC_KEY_PATH=/app/keys/dev.public.pem
+      - DATABASE_URL=sqlite:///instance/auth_test.db
+      - ENVIRONMENT=test
+    volumes:
+      - auth-test-data:/app/instance
+      - ${TEST_JWT_PRIVATE_KEY_FILE:-./keys/dev.private.pem}:/app/keys/dev.private.pem:ro
+      - ${TEST_JWT_PUBLIC_KEY_FILE:-./keys/dev.public.pem}:/app/keys/dev.public.pem:ro
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://localhost:5000/api/auth/health')",
+        ]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - taskapp-test-net
+
+  task-service:
+    build:
+      context: .
+      dockerfile: services/tasks/Dockerfile
+    environment:
+      - FLASK_ENV=testing
+      - TEST_JWT_PUBLIC_KEY_PATH=/app/keys/dev.public.pem
+      - DATABASE_URL=sqlite:///instance/tasks_test.db
+      - ENVIRONMENT=test
+    volumes:
+      - task-test-data:/app/instance
+      - ${TEST_JWT_PUBLIC_KEY_FILE:-./keys/dev.public.pem}:/app/keys/dev.public.pem:ro
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://localhost:5000/api/health')",
+        ]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - taskapp-test-net
+
+  frontend-service:
+    build:
+      context: .
+      dockerfile: services/frontend/Dockerfile
+    environment:
+      - FLASK_ENV=testing
+      - TEST_JWT_PUBLIC_KEY_PATH=/app/keys/dev.public.pem
+      - TEST_AUTH_SERVICE_URL=http://auth-service:5000
+      - TEST_TASK_SERVICE_URL=http://task-service:5000
+      - TEST_AUTH_SERVICE_TIMEOUT=3
+      - TEST_TASK_SERVICE_TIMEOUT=3
+      - ENVIRONMENT=test
+    volumes:
+      - ${TEST_JWT_PUBLIC_KEY_FILE:-./keys/dev.public.pem}:/app/keys/dev.public.pem:ro
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://localhost:5000/health')",
+        ]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - taskapp-test-net
+
+  gateway:
+    build:
+      context: .
+      dockerfile: gateway/Dockerfile
+    ports:
+      - "5000:5000"
+    environment:
+      - FLASK_ENV=testing
+      - TEST_AUTH_SERVICE_URL=http://auth-service:5000
+      - TEST_TASK_SERVICE_URL=http://task-service:5000
+      - TEST_FRONTEND_SERVICE_URL=http://frontend-service:5000
+      - TEST_PROXY_TIMEOUT=10
+    depends_on:
+      auth-service:
+        condition: service_healthy
+      task-service:
+        condition: service_healthy
+      frontend-service:
+        condition: service_healthy
+    networks:
+      - taskapp-test-net
+
+networks:
+  taskapp-test-net:
+    driver: bridge
+
+volumes:
+  auth-test-data:
+  task-test-data:

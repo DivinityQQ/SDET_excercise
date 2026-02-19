@@ -275,14 +275,17 @@ class TestMockingWithContext:
         Use when you want fine-grained control over when
         mocking is active.
         """
+        # Arrange
         service = NotificationService("real-api-key")
 
         # Mock is only active within the 'with' block
         with patch.object(service, "send_email") as mock_send:
             mock_send.return_value = {"message_id": "context123"}
 
+            # Act
             result = service.send_email("to@test.com", "Subject", "Body")
 
+            # Assert
             assert result["message_id"] == "context123"
             mock_send.assert_called_once()
 
@@ -292,18 +295,17 @@ class TestMockingWithContext:
 
         Use when testing code that depends on current time.
         """
-        # This is a common pattern for testing time-based logic
+        # Arrange
         fixed_time = datetime(2025, 1, 15, 10, 30, 0)
 
         with patch("tests.mocks.test_external_service.datetime") as mock_datetime:
             mock_datetime.now.return_value = fixed_time
             mock_datetime.side_effect = lambda *args, **kwargs: datetime(*args, **kwargs)
 
-            # Code that calls datetime.now() will get fixed_time
-            # This is useful for testing due date logic, etc.
-
-            # For demonstration
+            # Act
             from tests.mocks.test_external_service import datetime as dt
+
+            # Assert
             assert dt.now() == fixed_time
 
 
@@ -377,3 +379,47 @@ class TestVerifyingCalls:
         # Assert
         mock_service.send_email.assert_not_called()
         mock_service.send_sms.assert_not_called()
+
+
+def _call_auth_service_login(auth_base_url: str, username: str, password: str, timeout: int = 5) -> dict:
+    """Example helper showing how task views can call auth-service over HTTP."""
+    import requests
+
+    response = requests.post(
+        f"{auth_base_url}/api/auth/login",
+        json={"username": username, "password": password},
+        timeout=timeout,
+    )
+    response.raise_for_status()
+    return response.json()
+
+
+class TestMockAuthServiceCalls:
+    """Examples for mocking auth-service calls from another service."""
+
+    @patch("requests.post")
+    def test_mock_auth_login_http_call(self, mock_post):
+        # Arrange
+        mock_response = MagicMock()
+        mock_response.json.return_value = {
+            "token": "jwt-token",
+            "user": {"id": 1, "username": "demo"},
+        }
+        mock_response.raise_for_status.return_value = None
+        mock_post.return_value = mock_response
+
+        # Act
+        result = _call_auth_service_login(
+            auth_base_url="http://auth-service:5000",
+            username="demo",
+            password="secret",
+            timeout=3,
+        )
+
+        # Assert
+        assert result["token"] == "jwt-token"
+        mock_post.assert_called_once_with(
+            "http://auth-service:5000/api/auth/login",
+            json={"username": "demo", "password": "secret"},
+            timeout=3,
+        )

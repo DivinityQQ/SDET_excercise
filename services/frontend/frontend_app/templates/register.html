@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+
+{% block title %}Register - Task Manager{% endblock %}
+
+{% block content %}
+<div class="container auth-container">
+    <h1 data-testid="register-title">Register</h1>
+
+    <form method="POST" action="{{ url_for('views.register_submit') }}" class="task-form" data-testid="register-form">
+        <div class="form-group">
+            <label for="username">Username</label>
+            <input id="username"
+                   name="username"
+                   type="text"
+                   required
+                   autocomplete="username"
+                   data-testid="register-username-input">
+        </div>
+
+        <div class="form-group">
+            <label for="email">Email</label>
+            <input id="email"
+                   name="email"
+                   type="email"
+                   required
+                   autocomplete="email"
+                   data-testid="register-email-input">
+        </div>
+
+        <div class="form-group">
+            <label for="password">Password</label>
+            <input id="password"
+                   name="password"
+                   type="password"
+                   required
+                   autocomplete="new-password"
+                   data-testid="register-password-input">
+        </div>
+
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary" data-testid="register-submit">Register</button>
+            <a href="{{ url_for('views.login') }}" class="btn btn-secondary" data-testid="login-link">
+                Login
+            </a>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
