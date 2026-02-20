@@ -41,3 +41,83 @@ jobs:
       - run: TEST_BASE_URL=http://localhost:5000 pytest tests/smoke -v
       - if: always()
         run: docker compose -p taskapp-nightly -f docker-compose.test.yml down -v --remove-orphans
+
+  performance-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/generate-keys
+
+      - name: Build and start stack
+        run: docker compose -p taskapp-nightly-perf -f docker-compose.yml up -d --build
+
+      - name: Wait for health checks
+        run: |
+          for i in {1..45}; do
+            if curl -sf http://localhost:5000/api/health > /dev/null && curl -sf http://localhost:5000/api/auth/health > /dev/null; then
+              exit 0
+            fi
+            sleep 2
+          done
+          docker compose -p taskapp-nightly-perf -f docker-compose.yml logs
+          exit 1
+
+      - name: Install test dependencies
+        run: pip install -r requirements-dev.txt
+
+      - name: Run mixed workload scenario
+        run: |
+          mkdir -p results
+          locust -f tests/performance/locustfile.py \
+            --host http://localhost:5000 \
+            --headless \
+            --only-summary \
+            --reset-stats \
+            --exit-code-on-error 0 \
+            --tags mixed \
+            --users 10 \
+            --spawn-rate 3 \
+            --run-time 60s \
+            --csv results/nightly_mixed \
+            --html results/nightly_mixed.html
+
+      - name: Check mixed workload thresholds
+        run: |
+          python tests/performance/check_thresholds.py \
+            --stats results/nightly_mixed_stats.csv \
+            --thresholds tests/performance/thresholds.yml
+
+      - name: Run auth storm scenario
+        run: |
+          locust -f tests/performance/locustfile.py \
+            --host http://localhost:5000 \
+            --headless \
+            --only-summary \
+            --reset-stats \
+            --exit-code-on-error 0 \
+            --tags auth \
+            --users 10 \
+            --spawn-rate 5 \
+            --run-time 60s \
+            --csv results/nightly_auth \
+            --html results/nightly_auth.html
+
+      - name: Check auth storm thresholds
+        run: |
+          python tests/performance/check_thresholds.py \
+            --stats results/nightly_auth_stats.csv \
+            --thresholds tests/performance/thresholds.yml
+
+      - name: Upload performance artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nightly-performance-results
+          path: |
+            results/nightly_mixed*
+            results/nightly_auth*
+          retention-days: 30
+
+      - name: Teardown
+        if: always()
+        run: docker compose -p taskapp-nightly-perf -f docker-compose.yml down -v --remove-orphans

@@ -34,7 +34,37 @@ jobs:
           TEST_BASE_URL: http://localhost:5000
         run: pytest tests/smoke -v
 
+      - name: Run mixed performance baseline
+        run: |
+          mkdir -p results
+          locust -f tests/performance/locustfile.py \
+            --host http://localhost:5000 \
+            --headless \
+            --only-summary \
+            --reset-stats \
+            --exit-code-on-error 0 \
+            --tags mixed \
+            --users 5 \
+            --spawn-rate 2 \
+            --run-time 30s \
+            --csv results/main_mixed \
+            --html results/main_mixed.html
+
+      - name: Check performance thresholds
+        run: |
+          python tests/performance/check_thresholds.py \
+            --stats results/main_mixed_stats.csv \
+            --thresholds tests/performance/thresholds.yml
+
+      - name: Upload performance artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: main-performance-results
+          path: |
+            results/main_mixed*
+          retention-days: 30
+
       - name: Teardown
         if: always()
         run: docker compose -f docker-compose.yml down -v --remove-orphans
-

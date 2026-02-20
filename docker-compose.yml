@@ -11,6 +11,7 @@ services:
       - JWT_PUBLIC_KEY_PATH=/app/keys/dev.public.pem
       - DATABASE_URL=sqlite:///auth.db
       - ENVIRONMENT=dev
+      - GUNICORN_CMD_ARGS=--workers=2 --threads=2 --timeout=30 --preload
     volumes:
       - ${JWT_PRIVATE_KEY_FILE:-./keys/dev.private.pem}:/app/keys/dev.private.pem:ro
       - ${JWT_PUBLIC_KEY_FILE:-./keys/dev.public.pem}:/app/keys/dev.public.pem:ro
@@ -40,6 +41,7 @@ services:
       - JWT_PUBLIC_KEY_PATH=/app/keys/dev.public.pem
       - DATABASE_URL=sqlite:///tasks.db
       - ENVIRONMENT=dev
+      - GUNICORN_CMD_ARGS=--workers=2 --threads=2 --timeout=30 --preload
     volumes:
       - ${JWT_PUBLIC_KEY_FILE:-./keys/dev.public.pem}:/app/keys/dev.public.pem:ro
     container_name: task-service
@@ -100,6 +102,7 @@ services:
       - TASK_SERVICE_URL=http://task-service:5000
       - FRONTEND_SERVICE_URL=http://frontend-service:5000
       - PROXY_TIMEOUT=10
+      - GUNICORN_CMD_ARGS=--workers=2 --threads=2 --timeout=30 --preload
     container_name: gateway
     depends_on:
       auth-service:
