@@ -1,0 +1,3 @@
+# CI performance numbers are a regression signal, not capacity claims.
+max_error_rate_percent: 1.0
+max_p95_ms: 2000
