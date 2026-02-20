@@ -1,4 +1,24 @@
-"""Shared abstract Locust user classes for performance scenarios."""
+"""
+Shared abstract Locust user classes for performance scenarios.
+
+Provides two layers of abstraction that concrete scenarios build on:
+
+1. :class:`AuthenticatedApiUser` — handles the register → login
+   lifecycle so that every virtual user starts with a valid JWT.
+2. :class:`TaskWorkflowUser` — adds a local pool of task IDs and
+   reusable CRUD primitives (list, get, create, update, delete).
+
+Concrete user classes (e.g.
+:class:`~tests.performance.scenarios.mixed.MixedTrafficUser`) only need
+to declare Locust ``@task`` methods that delegate to the ``_`` prefixed
+helpers defined here.
+
+Key Concepts Demonstrated:
+- Abstract Locust base classes for DRY scenario authoring
+- ``catch_response=True`` for in-band response validation without
+  inflating Locust's error statistics on parse failures
+- Self-healing task pool that auto-replenishes when empty
+"""
 
 from __future__ import annotations
 
@@ -19,7 +39,22 @@ from tests.performance.helpers import (
 
 
 class AuthenticatedApiUser(HttpUser):
-    """Base user that registers and logs in once at startup."""
+    """
+    Base user that registers and logs in once at startup.
+
+    Mirrors the real-world flow where a person creates an account, logs
+    in, and then performs all subsequent actions with a bearer token.
+    ``abstract = True`` tells Locust not to spawn this class directly —
+    only its concrete subclasses.
+
+    Attributes:
+        username: Display name created during ``on_start``.
+        email: Email address created during ``on_start``.
+        password: Plain-text password (fixed across all virtual users).
+        token: JWT obtained from the auth service after login.
+        headers: Pre-built header dict (``Authorization``,
+            ``Content-Type``, ``Accept``) reused for every request.
+    """
 
     abstract = True
 
@@ -30,6 +65,7 @@ class AuthenticatedApiUser(HttpUser):
     headers: dict[str, str]
 
     def on_start(self) -> None:
+        """Register a unique account, log in, and store the JWT."""
         self.username, self.email, self.password = unique_user_identity()
 
         if not register_user(
@@ -53,7 +89,21 @@ class AuthenticatedApiUser(HttpUser):
 
 
 class TaskWorkflowUser(AuthenticatedApiUser):
-    """Base user with common task CRUD actions and local task pool."""
+    """
+    Base user with common task CRUD actions and local task pool.
+
+    Extends :class:`AuthenticatedApiUser` with a per-user ``task_ids``
+    list that is seeded at startup and maintained as tasks are created
+    or deleted.  This ensures that read and update operations always
+    target tasks the user actually owns, avoiding artificial ``404``
+    responses that would skew error rates.
+
+    Attributes:
+        min_seed_tasks: Number of tasks created during ``on_start`` to
+            bootstrap the pool.
+        task_ids: Running list of task primary keys owned by this
+            virtual user.
+    """
 
     abstract = True
     min_seed_tasks = 3
@@ -61,17 +111,20 @@ class TaskWorkflowUser(AuthenticatedApiUser):
     task_ids: list[int]
 
     def on_start(self) -> None:
+        """Authenticate and pre-populate the local task pool."""
         super().on_start()
         self.task_ids = []
         self._seed_tasks(self.min_seed_tasks)
 
     def _seed_tasks(self, amount: int) -> None:
+        """Create *amount* tasks so reads/updates have data from the start."""
         for _ in range(amount):
             task_id = self._create_task_internal()
             if task_id is not None:
                 self.task_ids.append(task_id)
 
     def _create_task_internal(self) -> int | None:
+        """POST a new task and return its server-assigned ID, or ``None``."""
         with self.client.post(
             "/api/tasks",
             json=random_task_payload(),
@@ -93,6 +146,13 @@ class TaskWorkflowUser(AuthenticatedApiUser):
             return task_id
 
     def _pick_task_id(self) -> int | None:
+        """
+        Return a random task ID from the pool, auto-creating one if empty.
+
+        This self-healing behaviour keeps the pool non-empty even after
+        a burst of deletes, preventing downstream actions from silently
+        becoming no-ops.
+        """
         if not self.task_ids:
             task_id = self._create_task_internal()
             if task_id is not None:
@@ -104,6 +164,7 @@ class TaskWorkflowUser(AuthenticatedApiUser):
         return random.choice(self.task_ids)
 
     def _list_tasks(self) -> None:
+        """GET the full task list and validate the response shape."""
         with self.client.get(
             "/api/tasks",
             headers=self.headers,
@@ -122,6 +183,7 @@ class TaskWorkflowUser(AuthenticatedApiUser):
             response.success()
 
     def _get_single_task(self) -> None:
+        """GET one task by ID and verify the returned ID matches."""
         task_id = self._pick_task_id()
         if task_id is None:
             return
@@ -144,11 +206,13 @@ class TaskWorkflowUser(AuthenticatedApiUser):
             response.success()
 
     def _create_task(self) -> None:
+        """Create a task and add its ID to the local pool."""
         task_id = self._create_task_internal()
         if task_id is not None:
             self.task_ids.append(task_id)
 
     def _update_task(self) -> None:
+        """PUT a partial update to a randomly chosen owned task."""
         task_id = self._pick_task_id()
         if task_id is None:
             return
@@ -173,6 +237,13 @@ class TaskWorkflowUser(AuthenticatedApiUser):
             response.success()
 
     def _delete_task(self) -> None:
+        """
+        Delete a task and immediately create a replacement.
+
+        The replacement keeps the pool size roughly constant so that
+        subsequent reads and updates continue to hit valid IDs rather
+        than producing a growing stream of ``404`` errors.
+        """
         task_id = self._pick_task_id()
         if task_id is None:
             return
@@ -187,7 +258,6 @@ class TaskWorkflowUser(AuthenticatedApiUser):
                 response.failure(f"Expected 200, got {response.status_code}")
                 return
 
-            # Keep pool size stable so user behavior remains realistic.
             if task_id in self.task_ids:
                 self.task_ids.remove(task_id)
 
@@ -198,6 +268,7 @@ class TaskWorkflowUser(AuthenticatedApiUser):
             response.success()
 
     def _verify_token(self) -> None:
+        """Hit the auth-verify endpoint and validate the returned claims."""
         with self.client.get(
             "/api/auth/verify",
             headers=self.headers,
@@ -220,7 +291,7 @@ class TaskWorkflowUser(AuthenticatedApiUser):
 
 
 def _safe_json(response: Any) -> dict[str, Any]:
-    """Return response JSON as dict, or an empty dict if parsing fails."""
+    """Return response JSON as a dict, or ``{}`` if parsing fails."""
     try:
         data = response.json()
     except ValueError:

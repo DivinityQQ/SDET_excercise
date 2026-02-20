@@ -1,4 +1,27 @@
-"""Validate Locust CSV output against threshold configuration."""
+"""
+Validate Locust CSV output against threshold configuration.
+
+After a Locust run completes, CI invokes this script to decide whether
+the build passes or fails.  It reads the ``*_stats.csv`` file that
+Locust generates, extracts the **Aggregated** row, and compares two
+metrics against limits defined in :file:`thresholds.yml`:
+
+- **Error rate (%)** — ``Failure Count / Request Count × 100``
+- **P95 latency (ms)** — the 95th-percentile response time
+
+Exit codes follow a three-state convention so that CI can distinguish
+"thresholds breached" from "script crashed":
+
+- ``0`` — all thresholds passed
+- ``1`` — at least one threshold was breached
+- ``2`` — the script itself failed (missing file, bad YAML, etc.)
+
+Key Concepts Demonstrated:
+- CSV-based performance gating without external tooling
+- Defensive parsing (multiple p95 column name variants, safe float
+  conversion) to tolerate Locust version differences
+- Human-readable summary table printed to stdout for CI logs
+"""
 
 from __future__ import annotations
 
@@ -10,12 +33,14 @@ from typing import Any
 
 import yaml
 
+# Three-state exit codes so CI can tell "test failed" from "script crashed".
 EXIT_PASS = 0
 EXIT_THRESHOLD_BREACH = 1
 EXIT_SCRIPT_ERROR = 2
 
 
 def parse_args() -> argparse.Namespace:
+    """Parse CLI arguments for the threshold checker."""
     parser = argparse.ArgumentParser(
         description="Check Locust stats CSV against performance thresholds."
     )
@@ -35,6 +60,19 @@ def parse_args() -> argparse.Namespace:
 
 
 def _load_thresholds(path: Path) -> dict[str, float]:
+    """
+    Read threshold limits from a YAML file.
+
+    Args:
+        path: Path to a YAML file containing ``max_error_rate_percent``
+            and ``max_p95_ms`` keys.
+
+    Returns:
+        A dictionary with the two threshold values as floats.
+
+    Raises:
+        ValueError: If either key is missing or non-numeric.
+    """
     with path.open("r", encoding="utf-8") as handle:
         data = yaml.safe_load(handle) or {}
 
@@ -53,6 +91,23 @@ def _load_thresholds(path: Path) -> dict[str, float]:
 
 
 def _load_aggregated_row(stats_path: Path) -> dict[str, str]:
+    """
+    Find and return the ``Aggregated`` summary row from a Locust stats CSV.
+
+    Locust writes one row per endpoint plus a final ``Aggregated`` row
+    that summarises all traffic.  This function scans for that row by
+    checking both the ``Name`` and ``Type`` columns, since the column
+    layout varies between Locust versions.
+
+    Args:
+        stats_path: Path to the ``*_stats.csv`` file produced by Locust.
+
+    Returns:
+        The aggregated row as an ordered dictionary of column→value pairs.
+
+    Raises:
+        ValueError: If no ``Aggregated`` row is found.
+    """
     with stats_path.open("r", encoding="utf-8", newline="") as handle:
         rows = list(csv.DictReader(handle))
 
@@ -64,6 +119,20 @@ def _load_aggregated_row(stats_path: Path) -> dict[str, str]:
 
 
 def _parse_float(value: Any, field_name: str) -> float:
+    """
+    Coerce *value* to ``float``, stripping ``%`` suffixes if present.
+
+    Args:
+        value: The raw CSV cell value (may be ``None``, empty, or
+            contain a trailing ``%``).
+        field_name: Human-readable name used in error messages.
+
+    Returns:
+        The numeric value as a float.
+
+    Raises:
+        ValueError: If the value is missing, empty, or non-numeric.
+    """
     if value is None:
         raise ValueError(f"Missing field: {field_name}")
 
@@ -78,6 +147,21 @@ def _parse_float(value: Any, field_name: str) -> float:
 
 
 def _extract_p95_ms(row: dict[str, str]) -> float:
+    """
+    Extract the 95th-percentile latency from an aggregated stats row.
+
+    Different Locust versions label this column differently, so we try
+    several known variants in order.
+
+    Args:
+        row: The ``Aggregated`` row dictionary from the CSV.
+
+    Returns:
+        The P95 latency in milliseconds.
+
+    Raises:
+        ValueError: If none of the known column names are found.
+    """
     candidates = ("95%", "95%ile", "95th percentile", "p95")
     for candidate in candidates:
         if candidate in row and row[candidate] not in (None, ""):
@@ -86,6 +170,18 @@ def _extract_p95_ms(row: dict[str, str]) -> float:
 
 
 def _compute_error_rate_percent(row: dict[str, str]) -> float:
+    """
+    Compute the error rate as a percentage from request and failure counts.
+
+    Args:
+        row: The ``Aggregated`` row dictionary from the CSV.
+
+    Returns:
+        ``(Failure Count / Request Count) × 100``.
+
+    Raises:
+        ValueError: If counts are missing or ``Request Count`` is zero.
+    """
     request_count = _parse_float(row.get("Request Count"), "Request Count")
     failure_count = _parse_float(row.get("Failure Count"), "Failure Count")
 
@@ -103,6 +199,7 @@ def _print_summary(
     max_p95_ms: float,
     passed: bool,
 ) -> None:
+    """Print a human-readable results table to stdout for CI logs."""
     print("Performance Threshold Check")
     print("-" * 60)
     print(f"{'Metric':<22}{'Actual':>12}{'Limit':>14}{'Status':>12}")
@@ -120,6 +217,14 @@ def _print_summary(
 
 
 def main() -> int:
+    """
+    Entry point: load thresholds, parse CSV, compare, and print results.
+
+    Returns:
+        ``EXIT_PASS`` (0) if all thresholds are met,
+        ``EXIT_THRESHOLD_BREACH`` (1) if any are exceeded, or
+        ``EXIT_SCRIPT_ERROR`` (2) on unexpected failures.
+    """
     args = parse_args()
 
     try:
