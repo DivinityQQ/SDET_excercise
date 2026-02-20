@@ -188,6 +188,40 @@ Playwright browser tests against the real web UI. If `TEST_BASE_URL` is set, tes
 pytest tests/e2e -v --browser chromium
 ```
 
+### Performance tests (Locust, requires running stack)
+
+Locust tests run through the gateway (`http://localhost:5000`) and provide
+latency/error-rate regression signals. The default CI gate uses the `mixed`
+scenario.
+
+```bash
+# Mixed workload (read-heavy)
+locust -f tests/performance/locustfile.py \
+  --host http://localhost:5000 \
+  --tags mixed \
+  --headless \
+  --only-summary \
+  --reset-stats \
+  --exit-code-on-error 0 \
+  --users 5 \
+  --spawn-rate 2 \
+  --run-time 30s \
+  --csv results/local_mixed \
+  --html results/local_mixed.html
+
+# Optional focused scenarios
+locust -f tests/performance/locustfile.py --host http://localhost:5000 --tags auth --headless --users 10 --spawn-rate 5 --run-time 60s
+locust -f tests/performance/locustfile.py --host http://localhost:5000 --tags crud --headless --users 10 --spawn-rate 3 --run-time 60s
+```
+
+Check pass/fail thresholds:
+
+```bash
+python tests/performance/check_thresholds.py \
+  --stats results/local_mixed_stats.csv \
+  --thresholds tests/performance/thresholds.yml
+```
+
 ## Repository Layout
 
 ```
@@ -233,6 +267,7 @@ tests/
   cross_service/                  Auth + Task integration tests
   e2e/                            Playwright browser tests
     pages/                        Page object models
+  performance/                    Locust scenarios + perf threshold checker
   smoke/                          Gateway smoke tests
   mocks/                          Mock/fixture tests
 docker-compose.yml                Production/development stack
@@ -258,9 +293,9 @@ Four GitHub Actions workflows in `.github/workflows/`:
 | Workflow | Trigger | What it does |
 |----------|---------|--------------|
 | `pr.yml` | Pull requests to main | Lint + per-service tests + cross-service + smoke (only for changed services via path-based detection) |
-| `main.yml` | Push to main | Build full stack, health checks, smoke tests |
-| `release.yml` | Tag push | Build and push Docker images to GHCR, staging E2E, production smoke |
-| `pr-nightly.yml` | Scheduled (nightly) | Full regression: all unit + cross-service + E2E tests |
+| `main.yml` | Push to main | Build full stack, health checks, smoke tests, short mixed Locust perf gate |
+| `release.yml` | Tag push | Build/push images, staging smoke, staging perf gate, production smoke |
+| `pr-nightly.yml` | Scheduled (nightly) | Full regression tests + nightly Locust perf runs (mixed + auth) |
 
 PR checks use `dorny/paths-filter` so that changing files in `services/auth/` only triggers auth-tests and cross-service-tests, not the entire suite. The nightly run covers everything unconditionally as a safety net.
 
