@@ -21,6 +21,11 @@ import pytest
 
 from shared.test_helpers import TEST_PRIVATE_KEY, create_test_token
 
+try:
+    from services.frontend.frontend_app.routes import views as views_module
+except ModuleNotFoundError:  # pragma: no cover - service-local test execution fallback
+    from frontend_app.routes import views as views_module
+
 pytestmark = pytest.mark.integration
 
 
@@ -66,7 +71,8 @@ def test_login_stores_token_in_session(client, monkeypatch):
         private_key=TEST_PRIVATE_KEY,
     )
     monkeypatch.setattr(
-        "frontend_app.routes.views.requests.post",
+        views_module.requests,
+        "post",
         lambda *_, **__: _FakeResponse(
             status_code=200,
             payload={"token": token, "user": {"id": 1, "username": "demo"}},
@@ -91,7 +97,8 @@ def test_register_success_redirects_to_login(client, monkeypatch):
     """Test that a successful registration redirects to /login."""
     # Arrange
     monkeypatch.setattr(
-        "frontend_app.routes.views.requests.post",
+        views_module.requests,
+        "post",
         lambda *_, **__: _FakeResponse(status_code=201, payload={"user": {"id": 1}}),
     )
 
@@ -159,7 +166,7 @@ def test_authenticated_index_fetches_tasks_from_task_api(client, monkeypatch):
             },
         )
 
-    monkeypatch.setattr("frontend_app.routes.views.requests.request", _fake_request)
+    monkeypatch.setattr(views_module.requests, "request", _fake_request)
 
     # Act
     response = client.get("/")

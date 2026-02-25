@@ -220,7 +220,7 @@ class TestMockingBasics:
 class TestPatchDecorator:
     """Examples using the @patch decorator."""
 
-    @patch("tests.mocks.test_external_service.NotificationService")
+    @patch(f"{__name__}.NotificationService")
     def test_patch_class(self, MockNotificationService):
         """
         Example: Patching an entire class.
@@ -298,15 +298,13 @@ class TestMockingWithContext:
         # Arrange
         fixed_time = datetime(2025, 1, 15, 10, 30, 0)
 
-        with patch("tests.mocks.test_external_service.datetime") as mock_datetime:
+        with patch(f"{__name__}.datetime") as mock_datetime:
             mock_datetime.now.return_value = fixed_time
             mock_datetime.side_effect = lambda *args, **kwargs: datetime(*args, **kwargs)
 
             # Act
-            from tests.mocks.test_external_service import datetime as dt
-
             # Assert
-            assert dt.now() == fixed_time
+            assert datetime.now() == fixed_time
 
 
 class TestVerifyingCalls:
@@ -399,6 +397,13 @@ class TestMockAuthServiceCalls:
 
     @patch("requests.post")
     def test_mock_auth_login_http_call(self, mock_post):
+        """
+        Example: Mocking an HTTP call made by a helper function.
+
+        Use when testing service-layer helpers that call a downstream
+        service over HTTP and you want to verify both the request
+        arguments and the parsed response handling.
+        """
         # Arrange
         mock_response = MagicMock()
         mock_response.json.return_value = {
