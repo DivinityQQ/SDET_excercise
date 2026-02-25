@@ -26,6 +26,9 @@ jobs:
           - name: gateway
             dockerfile: gateway/Dockerfile
             image_suffix: gateway
+          - name: frontend-service
+            dockerfile: services/frontend/Dockerfile
+            image_suffix: frontend-service
     steps:
       - uses: actions/checkout@v4
       - uses: docker/setup-buildx-action@v3
