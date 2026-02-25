@@ -42,8 +42,8 @@ Think of it like this: If developers build the car, SDETs build the machines tha
 ```
 
 **In this repo:**
-- **Unit/Mock tests** (`tests/mocks/`) - Test individual components in isolation
-- **API tests** (`tests/integration/`) - Test the REST API endpoints
+- **Unit tests** (`services/*/tests/unit/`) - Test individual components in isolation
+- **API/Integration tests** (`services/*/tests/integration/`) - Test the REST API endpoints
 - **UI/E2E tests** (`tests/e2e/`) - Test the full user interface
 
 **Why it matters:** You want mostly fast unit tests, fewer API tests, and only critical UI tests. This keeps testing fast and reliable.
@@ -56,19 +56,20 @@ Think of it like this: If developers build the car, SDETs build the machines tha
 
 **Simple analogy:** Like setting the table before a dinner party - you don't want to do it separately for each guest.
 
-**In this repo** (`tests/conftest.py`):
+**In this repo** (`services/auth/tests/conftest.py`):
 ```python
-@pytest.fixture
+@pytest.fixture(scope="function")
 def client(app):
     """Creates a test client to make HTTP requests"""
-    return app.test_client()
+    with app.test_client() as test_client:
+        yield test_client
 
-@pytest.fixture
+@pytest.fixture(scope="function")
 def db_session(app):
     """Creates a clean database for each test"""
     with app.app_context():
         db.create_all()
-        yield db.session
+        yield db
         db.session.rollback()
         db.drop_all()
 ```
@@ -81,18 +82,19 @@ def db_session(app):
 
 **What it is:** A way to structure your tests with three clear sections.
 
-**Example from this repo** (`tests/integration/test_tasks_crud.py`):
+**Example from this repo** (`services/tasks/tests/integration/test_tasks_crud.py`):
 ```python
-def test_create_task_with_valid_data(self, client, db_session, valid_task_data, api_headers):
-    # ARRANGE: Prepare the data
-    task_data = valid_task_data
+def test_get_tasks_returns_empty_list_when_no_tasks(self, client, db_session, api_headers):
+    # ARRANGE - provided by db_session fixture (clean database)
 
-    # ACT: Perform the action
-    response = client.post("/api/tasks", data=json.dumps(task_data), headers=api_headers)
+    # ACT
+    response = client.get("/api/tasks", headers=api_headers)
 
-    # ASSERT: Check the results
-    assert response.status_code == 201
-    assert response_data["title"] == task_data["title"]
+    # ASSERT
+    assert response.status_code == 200
+    data = response.get_json()
+    assert data["tasks"] == []
+    assert data["count"] == 0
 ```
 
 **Why it matters:** Makes tests easy to read and understand - you know exactly what's being tested.
@@ -129,15 +131,15 @@ class TaskListPage(BasePage):
 
 **What it is:** Running the same test with different inputs automatically.
 
-**In this repo** (`tests/integration/test_validation.py`):
+**In this repo** (`services/tasks/tests/integration/test_validation.py`):
 ```python
-@pytest.mark.parametrize("invalid_status", ["invalid", "PENDING", "Done", "123", ""])
-def test_create_task_with_invalid_status(self, client, invalid_status):
-    """Test that invalid statuses are rejected"""
+@pytest.mark.parametrize("status", ["PENDING", "Pending", "done", "started", "in-progress", "", 123])
+def test_create_task_with_invalid_status_returns_400(self, client, db_session, api_headers, status):
+    """Test that non-canonical status values are rejected (case-sensitive enum)"""
     response = client.post("/api/tasks", data=json.dumps({
         "title": "Test Task",
-        "status": invalid_status
-    }))
+        "status": status
+    }), headers=api_headers)
     assert response.status_code == 400
 ```
 
@@ -202,11 +204,11 @@ pytest -m "ui"         # Only UI tests
 
 **Simple analogy:** Like a car's warning light that automatically checks if something's wrong.
 
-**In this repo** (`.github/workflows/tests.yml`):
-- Every time you push code to GitHub
-- Automatically runs linting, API tests, UI tests, and mock tests
+**In this repo** (`.github/workflows/pr.yml`, `main.yml`, `pr-nightly.yml`, `release.yml`):
+- Every time you open a pull request, push to main, or tag a release
+- Automatically runs linting, per-service tests, cross-service tests, smoke tests, and performance gates
+- Nightly run executes the full suite including Playwright E2E tests
 - If any test fails, you get notified
-- Saves test reports you can download
 
 **Why it matters:**
 - Catch bugs immediately
@@ -277,8 +279,7 @@ def test_get_non_existent_task(self, client):
 **What it is:** Creating readable reports of test results.
 
 **In this repo:**
-- HTML reports saved to `reports/` directory
-- Screenshots when UI tests fail
+- Screenshots when UI/E2E tests fail, saved to `test-results/screenshots/`
 - Shows which tests passed/failed and why
 - Stored in GitHub Actions artifacts for 30 days
 
@@ -286,9 +287,7 @@ def test_get_non_existent_task(self, client):
 
 ---
 
-## Important Concepts Not Yet in This Repository
-
-### 1. **Performance Testing** ⚡
+### 13. **Performance Testing** ⚡
 
 **What it is:** Testing how fast your application is and how much load it can handle.
 
@@ -298,13 +297,7 @@ def test_get_non_existent_task(self, client):
 - **Spike Testing:** What if traffic suddenly jumps 10x?
 - **Soak Testing:** Does your app leak memory over 24 hours?
 
-**Tools:**
-- JMeter - Open-source load testing tool
-- Gatling - Scala-based performance testing
-- Locust - Python-based, write tests in Python
-- K6 - Modern load testing tool
-
-**Simple example (with Locust):**
+**In this repo** (`tests/performance/`):
 ```python
 from locust import HttpUser, task, between
 
@@ -322,11 +315,15 @@ class TaskUser(HttpUser):
         })
 ```
 
+Threshold checks run automatically in CI after each Locust scenario and fail the build if latency or error-rate limits are exceeded (`tests/performance/thresholds.yml`).
+
 **Why it matters:** Your app might work with 10 users but crash with 1,000.
 
 ---
 
-### 2. **Contract Testing** 🤝
+## Important Concepts Not Yet in This Repository
+
+### 1. **Contract Testing** 🤝
 
 **What it is:** Testing that different services agree on how they communicate.
 
@@ -933,13 +930,13 @@ If you're new to testing, learn in this order:
    - GitHub Actions
    - Automated testing
 
-6. **Test Coverage** (add this next!)
+6. **Performance Testing** ✅ (this repo has examples)
+   - Locust load scenarios
+   - Threshold-based pass/fail gates
+
+7. **Test Coverage** (add this next!)
    - Running coverage reports
    - Interpreting results
-
-7. **Performance Testing** (intermediate)
-   - Load testing basics
-   - Performance metrics
 
 8. **Security Testing** (intermediate)
    - Common vulnerabilities
