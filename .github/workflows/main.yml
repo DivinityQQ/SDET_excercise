@@ -15,15 +15,7 @@ jobs:
         run: docker compose -f docker-compose.yml up -d --build
 
       - name: Wait for health checks
-        run: |
-          for i in {1..45}; do
-            if curl -sf http://localhost:5000/api/health > /dev/null && curl -sf http://localhost:5000/api/auth/health > /dev/null; then
-              exit 0
-            fi
-            sleep 2
-          done
-          docker compose -f docker-compose.yml logs
-          exit 1
+        run: scripts/wait-for-health.sh http://localhost:5000 45 2 docker compose -f docker-compose.yml logs
 
       - name: Install test dependencies
         run: |
@@ -32,7 +24,7 @@ jobs:
       - name: Run smoke tests via gateway
         env:
           TEST_BASE_URL: http://localhost:5000
-        run: pytest tests/smoke -v
+        run: python -m pytest tests/smoke -v
 
       - name: Run mixed performance baseline
         run: |

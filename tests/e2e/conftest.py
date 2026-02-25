@@ -1,49 +1,33 @@
-"""Playwright fixtures for microservices E2E tests."""
+"""
+Playwright fixtures for microservices E2E tests.
+
+Provides session-, function-, and helper-scoped pytest fixtures for
+browser-based end-to-end tests.  The ``live_server`` fixture manages stack
+lifecycle via :func:`shared.live_stack.live_stack_url`, and the page fixtures
+wrap Playwright's ``Browser`` and ``BrowserContext`` for per-test isolation.
+
+Key SDET Concepts Demonstrated:
+- Page Object fixtures for clean separation between test logic and UI interactions
+- Session-scoped live-server management shared across the full E2E suite
+- Per-function browser context and page to prevent session state leaking between tests
+- Credential factories for collision-free unique test data across parallel runs
+- Automatic screenshot capture on failure for post-mortem debugging
+"""
 
 from __future__ import annotations
 
 import os
-import subprocess
-import time
 import uuid
 from collections.abc import Callable, Generator
 
 import pytest
-import requests
 from playwright.sync_api import Browser, BrowserContext, Page
 
+from shared.live_stack import live_stack_url
 from tests.e2e.pages.login_page import LoginPage
 from tests.e2e.pages.register_page import RegisterPage
 from tests.e2e.pages.task_form_page import TaskFormPage
 from tests.e2e.pages.task_list_page import TaskListPage
-
-
-def _wait_for_healthy(url: str, timeout: int = 60, interval: int = 1) -> None:
-    """Poll gateway health endpoint until ready or timeout."""
-    deadline = time.time() + timeout
-    while time.time() < deadline:
-        try:
-            response = requests.get(f"{url}/api/health", timeout=2)
-            if response.status_code == 200:
-                return
-        except requests.RequestException:
-            pass
-        time.sleep(interval)
-    raise RuntimeError(f"Gateway at {url} not healthy after {timeout}s")
-
-
-def _wait_for_auth_healthy(url: str, timeout: int = 60, interval: int = 1) -> None:
-    """Poll auth health endpoint exposed via gateway."""
-    deadline = time.time() + timeout
-    while time.time() < deadline:
-        try:
-            response = requests.get(f"{url}/api/auth/health", timeout=2)
-            if response.status_code == 200:
-                return
-        except requests.RequestException:
-            pass
-        time.sleep(interval)
-    raise RuntimeError(f"Auth service via gateway at {url} not healthy after {timeout}s")
 
 
 @pytest.fixture(scope="session")
@@ -60,70 +44,13 @@ def live_server(test_run_id: str) -> Generator[str, None, None]:
     If TEST_BASE_URL is set, use that stack.
     Otherwise start docker compose test stack and tear it down afterwards.
     """
-    provided_base_url = os.getenv("TEST_BASE_URL")
-    if provided_base_url:
-        _wait_for_healthy(provided_base_url)
-        _wait_for_auth_healthy(provided_base_url)
-        yield provided_base_url
-        return
-
-    project_name = os.getenv("E2E_COMPOSE_PROJECT", f"taskapp-e2e-{test_run_id}")
-    compose_file = os.getenv("E2E_COMPOSE_FILE", "docker-compose.test.yml")
-    base_url = "http://localhost:5000"
-
-    compose_up_cmd = [
-        "docker",
-        "compose",
-        "-p",
-        project_name,
-        "-f",
-        compose_file,
-        "up",
-        "-d",
-        "--build",
-    ]
-    compose_down_cmd = [
-        "docker",
-        "compose",
-        "-p",
-        project_name,
-        "-f",
-        compose_file,
-        "down",
-        "-v",
-        "--remove-orphans",
-    ]
-
-    try:
-        subprocess.run(
-            compose_up_cmd,
-            check=True,
-            text=True,
-            capture_output=True,
-        )
-    except FileNotFoundError:
-        pytest.skip("docker is not installed; set TEST_BASE_URL to run E2E tests")
-    except subprocess.CalledProcessError as exc:
-        # Best-effort cleanup in case compose created partial resources
-        # before failing (containers, networks, volumes).
-        subprocess.run(
-            compose_down_cmd,
-            check=False,
-            text=True,
-            capture_output=True,
-        )
-        stdout = exc.stdout or ""
-        stderr = exc.stderr or ""
-        raise RuntimeError(
-            f"Failed to start docker compose stack.\nstdout:\n{stdout}\nstderr:\n{stderr}"
-        ) from exc
-
-    try:
-        _wait_for_healthy(base_url)
-        _wait_for_auth_healthy(base_url)
-        yield base_url
-    finally:
-        subprocess.run(compose_down_cmd, check=False)
+    yield from live_stack_url(
+        base_url_env="TEST_BASE_URL",
+        compose_project_env="E2E_COMPOSE_PROJECT",
+        compose_file_env="E2E_COMPOSE_FILE",
+        compose_project_default=f"taskapp-e2e-{test_run_id}",
+        suite_name="E2E",
+    )
 
 
 @pytest.fixture(scope="session")

@@ -158,10 +158,10 @@ Tests are organized in layers, from fast/isolated to slow/integrated:
 Each service has isolated tests that run in-process using Flask's test client (frontend is currently integration-focused):
 
 ```bash
-cd services/auth && PYTHONPATH=../.. pytest tests -v
-cd services/frontend && PYTHONPATH=../.. pytest tests -v
-cd services/tasks && PYTHONPATH=../.. pytest tests -v
-cd gateway && PYTHONPATH=.. pytest tests -v
+python -m pytest services/auth/tests -v
+python -m pytest services/frontend/tests -v
+python -m pytest services/tasks/tests -v
+python -m pytest gateway/tests -v
 ```
 
 ### Cross-service tests (no running services needed)
@@ -169,7 +169,7 @@ cd gateway && PYTHONPATH=.. pytest tests -v
 These spin up both Flask apps in-process via test fixtures and verify flows like register → login → create task, JWT contract validation, and tenant isolation:
 
 ```bash
-PYTHONPATH=. pytest tests/cross_service -v
+python -m pytest tests/cross_service -v
 ```
 
 ### Smoke tests (requires running stack)
@@ -177,7 +177,7 @@ PYTHONPATH=. pytest tests/cross_service -v
 Hit the gateway over HTTP to verify health and critical paths:
 
 ```bash
-TEST_BASE_URL=http://localhost:5000 pytest tests/smoke -v
+TEST_BASE_URL=http://localhost:5000 python -m pytest tests/smoke -v
 ```
 
 ### E2E tests (requires running stack)
@@ -185,7 +185,7 @@ TEST_BASE_URL=http://localhost:5000 pytest tests/smoke -v
 Playwright browser tests against the real web UI. If `TEST_BASE_URL` is set, tests run against that stack. Otherwise, they auto-start `docker-compose.test.yml`:
 
 ```bash
-pytest tests/e2e -v --browser chromium
+python -m pytest tests/e2e -v --browser chromium
 ```
 
 ### Performance tests (Locust, requires running stack)
