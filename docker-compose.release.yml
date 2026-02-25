@@ -1,0 +1,16 @@
+services:
+  auth-service:
+    image: ${AUTH_IMAGE:?AUTH_IMAGE must be set}
+    build: null
+
+  task-service:
+    image: ${TASK_IMAGE:?TASK_IMAGE must be set}
+    build: null
+
+  frontend-service:
+    image: ${FRONTEND_IMAGE:?FRONTEND_IMAGE must be set}
+    build: null
+
+  gateway:
+    image: ${GATEWAY_IMAGE:?GATEWAY_IMAGE must be set}
+    build: null
