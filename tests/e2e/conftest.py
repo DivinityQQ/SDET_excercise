@@ -17,22 +17,13 @@ Key SDET Concepts Demonstrated:
 from __future__ import annotations
 
 import os
-import sys
 import uuid
 from collections.abc import Callable, Generator
-from pathlib import Path
 
 import pytest
 from playwright.sync_api import Browser, BrowserContext, Page
 
-try:
-    from shared.live_stack import live_stack_url
-except ModuleNotFoundError:  # pragma: no cover - fallback for pytest script entrypoints
-    repo_root = Path(__file__).resolve().parents[2]
-    repo_root_str = str(repo_root)
-    if repo_root_str not in sys.path:
-        sys.path.insert(0, repo_root_str)
-    from shared.live_stack import live_stack_url
+from shared.live_stack import live_stack_url
 from tests.e2e.pages.login_page import LoginPage
 from tests.e2e.pages.register_page import RegisterPage
 from tests.e2e.pages.task_form_page import TaskFormPage
