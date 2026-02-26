@@ -39,7 +39,6 @@ def _register_payload(
     }
 
 
-@pytest.mark.security
 def test_register_user_success(client, db_session):
     """Test that a valid registration creates a user and returns 201."""
     # Arrange
@@ -127,7 +126,6 @@ def test_login_success_returns_token_and_user(client, db_session, user_factory):
     assert body["user"]["username"] == "login_user"
 
 
-@pytest.mark.security
 def test_login_wrong_password_returns_401(client, db_session, user_factory):
     """Test that an incorrect password returns 401 with a generic error."""
     # Arrange
@@ -166,7 +164,6 @@ def test_verify_returns_user_data_for_valid_token(client, db_session, user_facto
     assert response.get_json() == {"user_id": user.id, "username": "verify_user"}
 
 
-@pytest.mark.security
 def test_verify_missing_header_returns_401(client, db_session):
     """Test that /verify without an Authorization header returns 401."""
     # Arrange - (no setup needed)
@@ -179,7 +176,6 @@ def test_verify_missing_header_returns_401(client, db_session):
     assert response.get_json() == {"error": "Missing or invalid Authorization header"}
 
 
-@pytest.mark.security
 def test_verify_expired_token_returns_401(client, db_session, user_factory, app):
     """Test that /verify rejects an expired token with 401."""
     # Arrange

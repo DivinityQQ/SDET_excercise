@@ -357,7 +357,6 @@ class TestEstimatedMinutesValidation:
         assert response.get_json()["estimated_minutes"] == 45
 
 
-@pytest.mark.security
 class TestAuthValidation:
     """Tests for authentication error responses on task endpoints."""
 

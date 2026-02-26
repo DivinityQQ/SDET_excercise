@@ -40,7 +40,6 @@ class TestGetTasks:
         assert data["tasks"] == []
         assert data["count"] == 0
 
-    @pytest.mark.security
     def test_get_tasks_returns_all_tasks_for_current_user(
         self, client, db_session, multiple_tasks, task_factory, api_headers
     ):
@@ -113,7 +112,6 @@ class TestGetTask:
         assert response.status_code == 404
         assert "error" in response.get_json()
 
-    @pytest.mark.security
     def test_get_task_returns_404_for_other_users_task(
         self, client, db_session, task_factory, api_headers
     ):
@@ -242,7 +240,6 @@ class TestUpdateTask:
         # Assert
         assert response.status_code == 404
 
-    @pytest.mark.security
     def test_update_other_users_task_returns_404(
         self, client, db_session, task_factory, api_headers
     ):
@@ -288,7 +285,6 @@ class TestDeleteTask:
         # Assert
         assert response.status_code == 404
 
-    @pytest.mark.security
     def test_delete_other_users_task_returns_404(
         self, client, db_session, task_factory, api_headers
     ):

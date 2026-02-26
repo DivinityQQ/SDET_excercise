@@ -19,20 +19,15 @@ from __future__ import annotations
 import os
 import uuid
 from collections.abc import Callable, Generator
-from typing import TYPE_CHECKING, Any
 
 import pytest
-
-if TYPE_CHECKING:
-    from playwright.sync_api import Browser, BrowserContext, Page
-    from tests.e2e.pages.login_page import LoginPage
-    from tests.e2e.pages.register_page import RegisterPage
-    from tests.e2e.pages.task_form_page import TaskFormPage
-    from tests.e2e.pages.task_list_page import TaskListPage
-else:  # pragma: no cover - runtime fallback when Playwright is not installed
-    Browser = BrowserContext = Page = Any
+from playwright.sync_api import Browser, BrowserContext, Page
 
 from shared.live_stack import live_stack_url
+from tests.e2e.pages.login_page import LoginPage
+from tests.e2e.pages.register_page import RegisterPage
+from tests.e2e.pages.task_form_page import TaskFormPage
+from tests.e2e.pages.task_list_page import TaskListPage
 
 
 @pytest.fixture(scope="session")
@@ -104,16 +99,12 @@ def credential_factory(test_run_id: str) -> Callable[[str], dict[str, str]]:
 @pytest.fixture
 def login_page(page: Page, live_server: str) -> LoginPage:
     """LoginPage instance bound to the current page and live server."""
-    from tests.e2e.pages.login_page import LoginPage
-
     return LoginPage(page, live_server)
 
 
 @pytest.fixture
 def register_page(page: Page, live_server: str) -> RegisterPage:
     """RegisterPage instance bound to the current page and live server."""
-    from tests.e2e.pages.register_page import RegisterPage
-
     return RegisterPage(page, live_server)
 
 
@@ -144,16 +135,12 @@ def authenticated_user(
 @pytest.fixture
 def task_list_page(page: Page, live_server: str, authenticated_user) -> TaskListPage:
     """Authenticated TaskListPage instance for the current test."""
-    from tests.e2e.pages.task_list_page import TaskListPage
-
     return TaskListPage(page, live_server)
 
 
 @pytest.fixture
 def task_form_page(page: Page, live_server: str, authenticated_user) -> TaskFormPage:
     """Authenticated TaskFormPage pre-navigated to the new-task form."""
-    from tests.e2e.pages.task_form_page import TaskFormPage
-
     task_form = TaskFormPage(page, live_server)
     task_form.navigate()
     return task_form

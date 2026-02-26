@@ -47,7 +47,6 @@ def test_check_password_rejects_wrong_value(db_session):
     assert result is False
 
 
-@pytest.mark.security
 def test_to_dict_excludes_password_hash(db_session):
     """Test that to_dict never exposes the password_hash field."""
     # Arrange

@@ -77,7 +77,6 @@ def test_register_login_and_task_crud_flow(auth_client, task_client):
     assert get_response.get_json()["title"] == "Cross-service Task"
 
 
-@pytest.mark.security
 def test_user_a_cannot_access_user_b_tasks(auth_client, task_client):
     """Test that one user's tasks are invisible to another user."""
     # Arrange
