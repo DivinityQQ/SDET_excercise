@@ -62,6 +62,11 @@ class Config:
     TASK_SERVICE_URL: str = os.environ.get("TASK_SERVICE_URL", "http://localhost:5020")
     AUTH_SERVICE_TIMEOUT: int = int(os.environ.get("AUTH_SERVICE_TIMEOUT", "5"))
     TASK_SERVICE_TIMEOUT: int = int(os.environ.get("TASK_SERVICE_TIMEOUT", "5"))
+    SESSION_COOKIE_HTTPONLY: bool = True
+    SESSION_COOKIE_SAMESITE: str = os.environ.get("SESSION_COOKIE_SAMESITE", "Lax")
+    SESSION_COOKIE_SECURE: bool = (
+        os.environ.get("SESSION_COOKIE_SECURE", "false").strip().lower() == "true"
+    )
 
 
 class DevelopmentConfig(Config):
@@ -89,6 +94,9 @@ class ProductionConfig(Config):
 
     DEBUG: bool = False
     TESTING: bool = False
+    SESSION_COOKIE_SECURE: bool = (
+        os.environ.get("SESSION_COOKIE_SECURE", "true").strip().lower() == "true"
+    )
 
 
 config = {
