@@ -15,6 +15,7 @@ PERF_COMPOSE_FILE ?= docker-compose.yml
 PERF_RUNTIME ?= 60s
 
 .PHONY: help \
+	install \
 	lint \
 	test-auth-unit test-auth-integration test-auth-contract test-auth \
 	test-tasks-unit test-tasks-integration test-tasks-contract test-tasks \
@@ -65,9 +66,14 @@ help: ## Show grouped Make targets.
 	@echo "  make test-all"
 	@echo ""
 	@echo "Utility:"
+	@echo "  make install"
 	@echo "  make lint"
 	@echo "  make stack-up"
 	@echo "  make stack-down"
+
+install: ## Install all developer dependencies.
+	$(PYTHON) -m pip install --upgrade pip
+	$(PYTHON) -m pip install -e ".[dev]"
 
 lint: ## Run lint checks.
 	$(PYTHON) -m ruff check .

@@ -179,7 +179,7 @@ def test_patch_requests(self, mock_post):
 
 **What it is:** Labels for tests that let you run specific groups.
 
-**In this repo** (`pytest.ini` and tests):
+**In this repo** (`pyproject.toml` pytest settings and tests):
 ```python
 @pytest.mark.api
 @pytest.mark.smoke

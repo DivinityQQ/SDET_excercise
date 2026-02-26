@@ -62,7 +62,7 @@ Authentication uses **RS256 JWT tokens** with asymmetric keys across services:
 python -m venv .venv
 .venv\Scripts\activate       # Windows
 # source .venv/bin/activate  # Linux/macOS
-pip install -r requirements-dev.txt
+make install
 python keys/generate.py
 python -m playwright install chromium
 ```
