@@ -6,7 +6,6 @@ SHELL := /bin/bash
 PYTHON ?= $(if $(wildcard .venv/bin/python),.venv/bin/python,python3)
 PYTEST ?= $(PYTHON) -m pytest
 BASE_URL ?= http://localhost:5000
-SECURITY_TEST_PATHS ?= services/auth/tests services/tasks/tests services/frontend/tests gateway/tests tests/cross_service tests/security
 
 SMOKE_E2E_COMPOSE_PROJECT ?= taskapp-local
 SMOKE_E2E_COMPOSE_FILE ?= docker-compose.test.yml
@@ -139,7 +138,7 @@ test-cross-service: ## Run cross-service tests (requires auth+tasks dependencies
 	$(PYTEST) tests/cross_service -m "not security" -v
 
 test-security: ## Run all security-marked tests across the repository.
-	$(PYTEST) $(SECURITY_TEST_PATHS) -m security -v
+	$(PYTEST) -m security -v
 
 test-unit: ## Run all unit tests across services and gateway.
 	$(PYTEST) services/auth/tests services/tasks/tests services/frontend/tests gateway/tests -m "unit and not security" -v

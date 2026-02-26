@@ -19,9 +19,14 @@ from __future__ import annotations
 import os
 import uuid
 from collections.abc import Callable, Generator
+from typing import TYPE_CHECKING, Any
 
 import pytest
-from playwright.sync_api import Browser, BrowserContext, Page
+
+if TYPE_CHECKING:
+    from playwright.sync_api import Browser, BrowserContext, Page
+else:  # pragma: no cover - runtime fallback when Playwright is not installed
+    Browser = BrowserContext = Page = Any
 
 from shared.live_stack import live_stack_url
 from tests.e2e.pages.login_page import LoginPage
