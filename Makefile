@@ -70,7 +70,7 @@ help: ## Show grouped Make targets.
 	@echo "  make stack-down"
 
 lint: ## Run lint checks.
-	ruff check .
+	$(PYTHON) -m ruff check .
 
 # ---- Service tests ----------------------------------------------------------
 
