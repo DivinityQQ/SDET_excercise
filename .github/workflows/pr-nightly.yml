@@ -109,6 +109,27 @@ jobs:
             --stats results/nightly_auth_stats.csv \
             --thresholds tests/performance/thresholds.yml
 
+      - name: Run task CRUD scenario
+        run: |
+          locust -f tests/performance/locustfile.py \
+            --host http://localhost:5000 \
+            --headless \
+            --only-summary \
+            --reset-stats \
+            --exit-code-on-error 0 \
+            --tags crud \
+            --users 10 \
+            --spawn-rate 3 \
+            --run-time 60s \
+            --csv results/nightly_crud \
+            --html results/nightly_crud.html
+
+      - name: Check task CRUD thresholds
+        run: |
+          python tests/performance/check_thresholds.py \
+            --stats results/nightly_crud_stats.csv \
+            --thresholds tests/performance/thresholds.yml
+
       - name: Upload performance artifacts
         if: always()
         uses: actions/upload-artifact@v4
@@ -117,6 +138,7 @@ jobs:
           path: |
             results/nightly_mixed*
             results/nightly_auth*
+            results/nightly_crud*
           retention-days: 30
 
       - name: Teardown
