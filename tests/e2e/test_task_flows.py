@@ -26,7 +26,9 @@ import re
 from collections.abc import Callable
 
 import pytest
-from playwright.sync_api import expect
+
+playwright_sync_api = pytest.importorskip("playwright.sync_api")
+expect = playwright_sync_api.expect
 
 from tests.e2e.pages.login_page import LoginPage
 from tests.e2e.pages.register_page import RegisterPage
