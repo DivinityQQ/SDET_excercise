@@ -261,7 +261,6 @@ class TestTaskDeletionFlow:
 class TestCompleteTaskLifecycle:
     """Tests for the full create-read-update-delete lifecycle of a task."""
 
-    @pytest.mark.slow
     def test_full_task_lifecycle(self, task_form_page, task_list_page, page):
         """Test the complete CRUD lifecycle: create, view, edit, then delete."""
         # Arrange -- fixtures provide the authenticated browser session

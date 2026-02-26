@@ -54,17 +54,17 @@ Authentication uses **RS256 JWT tokens** with asymmetric keys across services:
 
 - Python 3.13+
 - Docker and Docker Compose
+- GNU Make (recommended for the test workflow)
 
 ## Setup
 
 ```bash
-python -m venv venv
-venv\Scripts\activate        # Windows
-# source venv/bin/activate   # Linux/macOS
-pip install -r requirements.txt
+python -m venv .venv
+.venv\Scripts\activate       # Windows
+# source .venv/bin/activate  # Linux/macOS
 pip install -r requirements-dev.txt
 python keys/generate.py
-playwright install chromium
+python -m playwright install chromium
 ```
 
 ## Running the Stack
@@ -151,72 +151,71 @@ curl -s http://localhost:5000/api/tasks \
 
 ## Testing
 
-Tests are organized in layers, from fast/isolated to slow/integrated:
+### Fast path (recommended)
 
-### Per-service tests (no running services needed)
-
-Each service has isolated tests that run in-process using Flask's test client (frontend is currently integration-focused):
+Use Make targets to run the right suite without remembering long commands:
 
 ```bash
+make help
+make test-all-local     # no docker
+make test-smoke         # docker stack + smoke checks
+make test-e2e           # docker stack + browser e2e
+make test-perf          # docker stack + mixed/auth/crud perf scenarios
+```
+
+If you are using a venv, activate it first (`source .venv/bin/activate` on Linux/macOS).
+
+### Focused targets
+
+```bash
+# Service-local
+make test-auth
+make test-tasks
+make test-frontend
+make test-gateway
+
+# Cross-cutting / marker-based
+make test-cross-service
+make test-resilience
+
+# Individual layers
+make test-auth-unit
+make test-tasks-integration
+make test-frontend-contract
+```
+
+### Direct pytest/locust commands (optional)
+
+```bash
+# Service-local
 python -m pytest services/auth/tests -v
 python -m pytest services/frontend/tests -v
 python -m pytest services/tasks/tests -v
 python -m pytest gateway/tests -v
-```
 
-### Cross-service tests (no running services needed)
-
-These spin up both Flask apps in-process via test fixtures and verify flows like register → login → create task, JWT contract validation, and tenant isolation:
-
-```bash
+# Cross-service
 python -m pytest tests/cross_service -v
-```
 
-### Smoke tests (requires running stack)
-
-Hit the gateway over HTTP to verify health and critical paths:
-
-```bash
+# Smoke (requires running stack or TEST_BASE_URL)
 TEST_BASE_URL=http://localhost:5000 python -m pytest tests/smoke -v
-```
 
-### E2E tests (requires running stack)
-
-Playwright browser tests against the real web UI. If `TEST_BASE_URL` is set, tests run against that stack. Otherwise, they auto-start `docker-compose.test.yml`:
-
-```bash
+# E2E (requires running stack or TEST_BASE_URL)
 python -m pytest tests/e2e -v --browser chromium
-```
 
-### Performance tests (Locust, requires running stack)
-
-Locust tests run through the gateway (`http://localhost:5000`) and provide
-latency/error-rate regression signals. The default CI gate uses the `mixed`
-scenario.
-
-```bash
-# Mixed workload (read-heavy)
-locust -f tests/performance/locustfile.py \
+# Performance (requires running stack)
+python -m locust -f tests/performance/locustfile.py \
   --host http://localhost:5000 \
   --tags mixed \
   --headless \
   --only-summary \
   --reset-stats \
   --exit-code-on-error 0 \
-  --users 5 \
-  --spawn-rate 2 \
-  --run-time 30s \
+  --users 10 \
+  --spawn-rate 3 \
+  --run-time 60s \
   --csv results/local_mixed \
   --html results/local_mixed.html
 
-# Optional focused scenarios
-locust -f tests/performance/locustfile.py --host http://localhost:5000 --tags auth --headless --users 10 --spawn-rate 5 --run-time 60s
-locust -f tests/performance/locustfile.py --host http://localhost:5000 --tags crud --headless --users 10 --spawn-rate 3 --run-time 60s
-```
-
-Check pass/fail thresholds:
-
-```bash
 python tests/performance/check_thresholds.py \
   --stats results/local_mixed_stats.csv \
   --thresholds tests/performance/thresholds.yml
@@ -269,7 +268,6 @@ tests/
     pages/                        Page object models
   performance/                    Locust scenarios + perf threshold checker
   smoke/                          Gateway smoke tests
-  mocks/                          Mock/fixture tests
 docker-compose.yml                Production/development stack
 docker-compose.test.yml           Test stack (isolated databases)
 .env.example                      Environment variable template
@@ -294,8 +292,8 @@ Four GitHub Actions workflows in `.github/workflows/`:
 |----------|---------|--------------|
 | `pr.yml` | Pull requests to main | Lint + per-service tests + cross-service + smoke (only for changed services via path-based detection) |
 | `main.yml` | Push to main | Build full stack, health checks, smoke tests, short mixed Locust perf gate |
-| `release.yml` | Tag push | Build/push images, staging smoke, staging perf gate, production smoke |
-| `pr-nightly.yml` | Scheduled (nightly) | Full regression tests + nightly Locust perf runs (mixed + auth) |
+| `release.yml` | Tag push | Build/push images, staging smoke gate, then parallel staging e2e + staging perf gate, then production smoke |
+| `pr-nightly.yml` | Scheduled (nightly) | Full regression tests + nightly Locust perf runs (mixed + auth + crud) |
 
 PR checks use `dorny/paths-filter` so that changing files in `services/auth/` only triggers auth-tests and cross-service-tests, not the entire suite. The nightly run covers everything unconditionally as a safety net.
 
