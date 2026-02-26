@@ -159,6 +159,8 @@ Use Make targets to run the right suite without remembering long commands:
 make help
 make test-all-local     # no docker
 make test-cov           # combined local coverage + gate from pyproject
+make test-security      # security-marked tests across repo
+make sast               # bandit static security scan
 make test-smoke         # docker stack + smoke checks
 make test-e2e           # docker stack + browser e2e
 make test-perf          # docker stack + mixed/auth/crud perf scenarios
@@ -178,12 +180,22 @@ make test-gateway
 # Cross-cutting / marker-based
 make test-cross-service
 make test-resilience
+make test-security
+make sast
 
 # Individual layers
 make test-auth-unit
 make test-tasks-integration
 make test-frontend-contract
 ```
+
+### Security testing model
+
+Security coverage is hybrid and marker-driven:
+
+- New adversarial suites live in `tests/security/`
+- Existing service-owned security tests stay near service code and use `@pytest.mark.security`
+- `make test-security` runs all security tests via `pytest -m security`
 
 ### Coverage
 
@@ -216,6 +228,10 @@ python -m pytest gateway/tests -v
 
 # Cross-service
 python -m pytest tests/cross_service -v
+python -m pytest -m security -v
+
+# SAST
+python -m bandit -r services gateway -c pyproject.toml
 
 # Smoke (requires running stack or TEST_BASE_URL)
 TEST_BASE_URL=http://localhost:5000 python -m pytest tests/smoke -v
@@ -285,6 +301,7 @@ contracts/
   jwt_contract.yaml               JWT claims and algorithm contract
 tests/
   cross_service/                  Auth + Task integration tests
+  security/                       Security-focused adversarial and hardening tests
   e2e/                            Playwright browser tests
     pages/                        Page object models
   performance/                    Locust scenarios + perf threshold checker
@@ -311,10 +328,10 @@ Four GitHub Actions workflows in `.github/workflows/`:
 
 | Workflow | Trigger | What it does |
 |----------|---------|--------------|
-| `pr.yml` | Pull requests to main | Lint + per-service tests (with per-service coverage XML + HTML artifacts and job-summary tables) + cross-service + smoke (only for changed services via path-based detection) |
+| `pr.yml` | Pull requests to main | Lint + per-service non-security tests (with per-service coverage XML + HTML artifacts and job-summary tables) + cross-service non-security + dedicated `security-tests` lane + `sast` bandit job + smoke (all path-filtered) |
 | `main.yml` | Push to main | Build full stack, health checks, smoke tests, short mixed Locust perf gate |
 | `release.yml` | Tag push | Build/push images, staging smoke gate, then parallel staging e2e + staging perf gate, then production smoke |
-| `pr-nightly.yml` | Scheduled (nightly) | Full regression tests in one combined coverage run (HTML + XML artifact, fail gate from pyproject) + nightly Locust perf runs (mixed + auth + crud) |
+| `pr-nightly.yml` | Scheduled (nightly) | Full non-security regression coverage run (HTML + XML artifact, fail gate from pyproject) + dedicated nightly `security-tests` + nightly `sast` + nightly Locust perf runs (mixed + auth + crud) |
 
 PR checks use `dorny/paths-filter` so that changing files in `services/auth/` only triggers auth-tests and cross-service-tests, not the entire suite. The nightly run covers everything unconditionally as a safety net.
 
