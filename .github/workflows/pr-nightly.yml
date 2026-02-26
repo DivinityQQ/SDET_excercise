@@ -41,7 +41,7 @@ jobs:
           cache-dependency-path: pyproject.toml
       - run: python -m pip install --upgrade pip
       - run: python -m pip install ".[test]"
-      - run: python -m pytest -m security -v
+      - run: python -m pytest tests/security -v
 
   sast:
     runs-on: ubuntu-latest

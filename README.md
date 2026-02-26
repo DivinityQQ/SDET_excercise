@@ -159,7 +159,7 @@ Use Make targets to run the right suite without remembering long commands:
 make help
 make test-all-local     # no docker
 make test-cov           # combined local coverage + gate from pyproject
-make test-security      # security-marked tests across repo
+make test-security      # centralized security suite
 make sast               # bandit static security scan
 make test-smoke         # docker stack + smoke checks
 make test-e2e           # docker stack + browser e2e
@@ -177,7 +177,7 @@ make test-tasks
 make test-frontend
 make test-gateway
 
-# Cross-cutting / marker-based
+# Cross-cutting
 make test-cross-service
 make test-resilience
 make test-security
@@ -191,11 +191,11 @@ make test-frontend-contract
 
 ### Security testing model
 
-Security coverage is hybrid and marker-driven:
+Security coverage is directory-driven:
 
-- New adversarial suites live in `tests/security/`
-- Existing service-owned security tests stay near service code and use `@pytest.mark.security`
-- `make test-security` runs all security tests via `pytest -m security`
+- Adversarial security suites live in `tests/security/`
+- `make test-security` runs `pytest tests/security -v`
+- Service and cross-service suites keep functional ownership tests in their own directories
 
 ### Coverage
 
@@ -228,7 +228,7 @@ python -m pytest gateway/tests -v
 
 # Cross-service
 python -m pytest tests/cross_service -v
-python -m pytest -m security -v
+python -m pytest tests/security -v
 
 # SAST
 python -m bandit -r services gateway -c pyproject.toml

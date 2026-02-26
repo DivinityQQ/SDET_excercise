@@ -137,8 +137,8 @@ test-gateway: ## Run all gateway tests.
 test-cross-service: ## Run cross-service tests (requires auth+tasks dependencies).
 	$(PYTEST) tests/cross_service -m "not security" -v
 
-test-security: ## Run all security-marked tests across the repository.
-	$(PYTEST) -m security -v
+test-security: ## Run centralized security tests.
+	$(PYTEST) tests/security -v
 
 test-unit: ## Run all unit tests across services and gateway.
 	$(PYTEST) services/auth/tests services/tasks/tests services/frontend/tests gateway/tests -m "unit and not security" -v

@@ -1,13 +1,13 @@
 # Security Test Map
 
-This repository uses a marker-based security lane:
+This repository uses a directory-based security lane:
 
 - Centralized adversarial tests live in `tests/security/`.
-- Security-relevant tests that remain service-owned are marked with `@pytest.mark.security`.
 
 ## How To Run
 
 - Local security tests: `make test-security`
+- Direct command: `python -m pytest tests/security -v`
 - SAST scan: `make sast`
 
 ## OWASP-Oriented Coverage
@@ -23,12 +23,4 @@ This repository uses a marker-based security lane:
 - `test_session_security.py`
   - Session cookie hardening checks (`HttpOnly`, `SameSite`, secure defaults in production).
 
-## Security-Marked Tests Outside `tests/security/`
-
-- `tests/cross_service/test_jwt_contract.py`
-- `tests/cross_service/test_auth_task_flow.py` (tenant-isolation case)
-- `services/tasks/tests/unit/test_auth.py`
-- `services/tasks/tests/integration/test_validation.py` (`TestAuthValidation`)
-- `services/tasks/tests/integration/test_tasks_crud.py` (IDOR-oriented cases)
-- `services/auth/tests/integration/test_auth_api.py` (selected auth-hardening cases)
-- `services/auth/tests/unit/test_models.py` (`password_hash` exposure guard)
+Service-owned verification tests remain in service and cross-service suites.
