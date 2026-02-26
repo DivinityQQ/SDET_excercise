@@ -94,6 +94,7 @@ jobs:
             else
               echo "_No coverage data generated._"
             fi
+            echo
             echo "_HTML artifact: coverage-auth_"
             echo
           } >> "$GITHUB_STEP_SUMMARY"
@@ -131,6 +132,7 @@ jobs:
             else
               echo "_No coverage data generated._"
             fi
+            echo
             echo "_HTML artifact: coverage-tasks_"
             echo
           } >> "$GITHUB_STEP_SUMMARY"
@@ -168,6 +170,7 @@ jobs:
             else
               echo "_No coverage data generated._"
             fi
+            echo
             echo "_HTML artifact: coverage-frontend_"
             echo
           } >> "$GITHUB_STEP_SUMMARY"
@@ -205,6 +208,7 @@ jobs:
             else
               echo "_No coverage data generated._"
             fi
+            echo
             echo "_HTML artifact: coverage-gateway_"
             echo
           } >> "$GITHUB_STEP_SUMMARY"
