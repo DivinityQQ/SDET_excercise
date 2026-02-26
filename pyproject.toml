@@ -1,0 +1,93 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sdet-excercise"
+version = "0.0.0"
+requires-python = ">=3.13"
+dependencies = [
+    "flask>=3.0.0",
+    "flask-sqlalchemy>=3.1.1",
+    "gunicorn>=22.0.0",
+    "python-dotenv>=1.0.0",
+    "PyJWT[crypto]>=2.8.0",
+    "werkzeug>=3.1.0",
+    "requests>=2.31.0",
+]
+
+[project.optional-dependencies]
+test = [
+    "pytest>=8.0.0",
+    "pytest-html>=4.1.1",
+    "faker>=22.0.0",
+    "pyyaml>=6.0.0",
+    "openapi-spec-validator>=0.7.1",
+    "jsonschema>=4.23.0",
+]
+ui = [
+    "playwright>=1.49.0",
+    "pytest-playwright>=0.5.0",
+]
+perf = [
+    "locust==2.43.3",
+]
+lint = [
+    "ruff>=0.1.14",
+]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-html>=4.1.1",
+    "faker>=22.0.0",
+    "pyyaml>=6.0.0",
+    "openapi-spec-validator>=0.7.1",
+    "jsonschema>=4.23.0",
+    "playwright>=1.49.0",
+    "pytest-playwright>=0.5.0",
+    "locust==2.43.3",
+    "ruff>=0.1.14",
+]
+
+[tool.setuptools]
+py-modules = []
+
+[tool.pytest.ini_options]
+pythonpath = [
+    ".",
+]
+testpaths = [
+    "services/auth/tests",
+    "services/frontend/tests",
+    "services/tasks/tests",
+    "gateway/tests",
+    "tests/cross_service",
+    "tests/e2e",
+    "tests/smoke",
+]
+python_files = [
+    "test_*.py",
+]
+python_classes = [
+    "Test*",
+]
+python_functions = [
+    "test_*",
+]
+markers = [
+    "unit: Fast, isolated tests with no external dependencies",
+    "integration: Tests requiring Flask test client (API tests)",
+    "contract: API contract validation tests",
+    "e2e: End-to-end browser tests using Playwright",
+    "smoke: Critical path verification for deployment health",
+    "cross_service: Tests spanning auth/task service boundaries",
+    "isolation: Service isolation behavior tests",
+    "resilience: Failure and timeout behavior tests",
+]
+addopts = [
+    "-v",
+    "--tb=short",
+    "--import-mode=importlib",
+    "--strict-markers",
+]
+log_cli = true
+log_cli_level = "INFO"

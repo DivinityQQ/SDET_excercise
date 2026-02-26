@@ -9,6 +9,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: "pip"
+          cache-dependency-path: pyproject.toml
       - uses: ./.github/actions/generate-keys
 
       - name: Build and start stack
@@ -19,7 +24,8 @@ jobs:
 
       - name: Install test dependencies
         run: |
-          pip install -r requirements-dev.txt
+          python -m pip install --upgrade pip
+          python -m pip install ".[test,perf]"
 
       - name: Run smoke tests via gateway
         env:
