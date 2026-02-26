@@ -83,7 +83,14 @@ jobs:
           cache-dependency-path: pyproject.toml
       - run: python -m pip install --upgrade pip
       - run: python -m pip install ".[test]"
-      - run: python -m pytest services/auth/tests -v
+      - run: python -m pytest services/auth/tests --cov=services/auth/auth_app --cov-report=term-missing --cov-report=xml:coverage-auth.xml --cov-fail-under=0 -v
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-auth
+          path: coverage-auth.xml
+          retention-days: 14
+          if-no-files-found: ignore
 
   task-tests:
     needs: [lint, changes]
@@ -98,7 +105,14 @@ jobs:
           cache-dependency-path: pyproject.toml
       - run: python -m pip install --upgrade pip
       - run: python -m pip install ".[test]"
-      - run: python -m pytest services/tasks/tests -v
+      - run: python -m pytest services/tasks/tests --cov=services/tasks/task_app --cov-report=term-missing --cov-report=xml:coverage-tasks.xml --cov-fail-under=0 -v
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-tasks
+          path: coverage-tasks.xml
+          retention-days: 14
+          if-no-files-found: ignore
 
   frontend-tests:
     needs: [lint, changes]
@@ -113,7 +127,14 @@ jobs:
           cache-dependency-path: pyproject.toml
       - run: python -m pip install --upgrade pip
       - run: python -m pip install ".[test]"
-      - run: python -m pytest services/frontend/tests -v
+      - run: python -m pytest services/frontend/tests --cov=services/frontend/frontend_app --cov-report=term-missing --cov-report=xml:coverage-frontend.xml --cov-fail-under=0 -v
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-frontend
+          path: coverage-frontend.xml
+          retention-days: 14
+          if-no-files-found: ignore
 
   gateway-tests:
     needs: [lint, changes]
@@ -128,7 +149,14 @@ jobs:
           cache-dependency-path: pyproject.toml
       - run: python -m pip install --upgrade pip
       - run: python -m pip install ".[test]"
-      - run: python -m pytest gateway/tests -v
+      - run: python -m pytest gateway/tests --cov=gateway/gateway_app --cov-report=term-missing --cov-report=xml:coverage-gateway.xml --cov-fail-under=0 -v
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-gateway
+          path: coverage-gateway.xml
+          retention-days: 14
+          if-no-files-found: ignore
 
   cross-service-tests:
     needs: [lint, changes]
