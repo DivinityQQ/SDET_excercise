@@ -228,7 +228,7 @@ python -m pytest gateway/tests -v
 
 # Cross-service
 python -m pytest tests/cross_service -v
-python -m pytest -m security -v
+python -m pytest services/auth/tests services/tasks/tests services/frontend/tests gateway/tests tests/cross_service tests/security -m security -v
 
 # SAST
 python -m bandit -r services gateway -c pyproject.toml
