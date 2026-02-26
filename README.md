@@ -311,7 +311,7 @@ Four GitHub Actions workflows in `.github/workflows/`:
 
 | Workflow | Trigger | What it does |
 |----------|---------|--------------|
-| `pr.yml` | Pull requests to main | Lint + per-service tests (with per-service coverage XML artifacts) + cross-service + smoke (only for changed services via path-based detection) |
+| `pr.yml` | Pull requests to main | Lint + per-service tests (with per-service coverage XML + HTML artifacts and job-summary tables) + cross-service + smoke (only for changed services via path-based detection) |
 | `main.yml` | Push to main | Build full stack, health checks, smoke tests, short mixed Locust perf gate |
 | `release.yml` | Tag push | Build/push images, staging smoke gate, then parallel staging e2e + staging perf gate, then production smoke |
 | `pr-nightly.yml` | Scheduled (nightly) | Full regression tests in one combined coverage run (HTML + XML artifact, fail gate from pyproject) + nightly Locust perf runs (mixed + auth + crud) |
