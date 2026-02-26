@@ -3,7 +3,7 @@
 SHELL := /bin/bash
 .SHELLFLAGS := -euo pipefail -c
 
-PYTHON ?= python3
+PYTHON ?= $(if $(wildcard .venv/bin/python),.venv/bin/python,python3)
 PYTEST ?= $(PYTHON) -m pytest
 BASE_URL ?= http://localhost:5000
 
@@ -166,32 +166,32 @@ test-perf-mixed: ## Run mixed performance scenario with managed stack lifecycle.
 	trap '$(MAKE) --no-print-directory perf-stack-down' EXIT; \
 	$(MAKE) --no-print-directory perf-stack-up; \
 	mkdir -p results; \
-	locust -f tests/performance/locustfile.py --host "$(BASE_URL)" --headless --only-summary --reset-stats --exit-code-on-error 0 --tags mixed --users 10 --spawn-rate 3 --run-time "$(PERF_RUNTIME)" --csv results/local_mixed --html results/local_mixed.html; \
+	$(PYTHON) -m locust -f tests/performance/locustfile.py --host "$(BASE_URL)" --headless --only-summary --reset-stats --exit-code-on-error 0 --tags mixed --users 10 --spawn-rate 3 --run-time "$(PERF_RUNTIME)" --csv results/local_mixed --html results/local_mixed.html; \
 	$(PYTHON) tests/performance/check_thresholds.py --stats results/local_mixed_stats.csv --thresholds tests/performance/thresholds.yml
 
 test-perf-auth: ## Run auth-storm performance scenario with managed stack lifecycle.
 	trap '$(MAKE) --no-print-directory perf-stack-down' EXIT; \
 	$(MAKE) --no-print-directory perf-stack-up; \
 	mkdir -p results; \
-	locust -f tests/performance/locustfile.py --host "$(BASE_URL)" --headless --only-summary --reset-stats --exit-code-on-error 0 --tags auth --users 10 --spawn-rate 5 --run-time "$(PERF_RUNTIME)" --csv results/local_auth --html results/local_auth.html; \
+	$(PYTHON) -m locust -f tests/performance/locustfile.py --host "$(BASE_URL)" --headless --only-summary --reset-stats --exit-code-on-error 0 --tags auth --users 10 --spawn-rate 5 --run-time "$(PERF_RUNTIME)" --csv results/local_auth --html results/local_auth.html; \
 	$(PYTHON) tests/performance/check_thresholds.py --stats results/local_auth_stats.csv --thresholds tests/performance/thresholds.yml
 
 test-perf-crud: ## Run CRUD performance scenario with managed stack lifecycle.
 	trap '$(MAKE) --no-print-directory perf-stack-down' EXIT; \
 	$(MAKE) --no-print-directory perf-stack-up; \
 	mkdir -p results; \
-	locust -f tests/performance/locustfile.py --host "$(BASE_URL)" --headless --only-summary --reset-stats --exit-code-on-error 0 --tags crud --users 10 --spawn-rate 3 --run-time "$(PERF_RUNTIME)" --csv results/local_crud --html results/local_crud.html; \
+	$(PYTHON) -m locust -f tests/performance/locustfile.py --host "$(BASE_URL)" --headless --only-summary --reset-stats --exit-code-on-error 0 --tags crud --users 10 --spawn-rate 3 --run-time "$(PERF_RUNTIME)" --csv results/local_crud --html results/local_crud.html; \
 	$(PYTHON) tests/performance/check_thresholds.py --stats results/local_crud_stats.csv --thresholds tests/performance/thresholds.yml
 
 test-perf: ## Run mixed, auth, and CRUD performance scenarios in one stack session.
 	trap '$(MAKE) --no-print-directory perf-stack-down' EXIT; \
 	$(MAKE) --no-print-directory perf-stack-up; \
 	mkdir -p results; \
-	locust -f tests/performance/locustfile.py --host "$(BASE_URL)" --headless --only-summary --reset-stats --exit-code-on-error 0 --tags mixed --users 10 --spawn-rate 3 --run-time "$(PERF_RUNTIME)" --csv results/local_mixed --html results/local_mixed.html; \
+	$(PYTHON) -m locust -f tests/performance/locustfile.py --host "$(BASE_URL)" --headless --only-summary --reset-stats --exit-code-on-error 0 --tags mixed --users 10 --spawn-rate 3 --run-time "$(PERF_RUNTIME)" --csv results/local_mixed --html results/local_mixed.html; \
 	$(PYTHON) tests/performance/check_thresholds.py --stats results/local_mixed_stats.csv --thresholds tests/performance/thresholds.yml; \
-	locust -f tests/performance/locustfile.py --host "$(BASE_URL)" --headless --only-summary --reset-stats --exit-code-on-error 0 --tags auth --users 10 --spawn-rate 5 --run-time "$(PERF_RUNTIME)" --csv results/local_auth --html results/local_auth.html; \
+	$(PYTHON) -m locust -f tests/performance/locustfile.py --host "$(BASE_URL)" --headless --only-summary --reset-stats --exit-code-on-error 0 --tags auth --users 10 --spawn-rate 5 --run-time "$(PERF_RUNTIME)" --csv results/local_auth --html results/local_auth.html; \
 	$(PYTHON) tests/performance/check_thresholds.py --stats results/local_auth_stats.csv --thresholds tests/performance/thresholds.yml; \
-	locust -f tests/performance/locustfile.py --host "$(BASE_URL)" --headless --only-summary --reset-stats --exit-code-on-error 0 --tags crud --users 10 --spawn-rate 3 --run-time "$(PERF_RUNTIME)" --csv results/local_crud --html results/local_crud.html; \
+	$(PYTHON) -m locust -f tests/performance/locustfile.py --host "$(BASE_URL)" --headless --only-summary --reset-stats --exit-code-on-error 0 --tags crud --users 10 --spawn-rate 3 --run-time "$(PERF_RUNTIME)" --csv results/local_crud --html results/local_crud.html; \
 	$(PYTHON) tests/performance/check_thresholds.py --stats results/local_crud_stats.csv --thresholds tests/performance/thresholds.yml
 
 # ---- Aggregate targets ------------------------------------------------------
