@@ -25,7 +25,7 @@ from flask import Flask, jsonify, g
 from shared.test_helpers import TEST_PRIVATE_KEY, TEST_PUBLIC_KEY, generate_throwaway_key_pair
 from services.tasks.task_app.auth import require_auth, verify_token
 
-pytestmark = pytest.mark.unit
+pytestmark = [pytest.mark.unit, pytest.mark.security]
 
 
 def _make_token(

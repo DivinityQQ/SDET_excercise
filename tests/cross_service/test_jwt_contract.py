@@ -30,7 +30,7 @@ import yaml
 from services.auth.auth_app.jwt import create_token
 from services.tasks.task_app.auth import verify_token
 
-pytestmark = pytest.mark.cross_service
+pytestmark = [pytest.mark.cross_service, pytest.mark.security]
 
 
 def _load_jwt_contract() -> dict:
