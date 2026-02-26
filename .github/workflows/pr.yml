@@ -13,6 +13,8 @@ jobs:
       tasks: ${{ steps.filter.outputs.tasks }}
       gateway: ${{ steps.filter.outputs.gateway }}
       cross: ${{ steps.filter.outputs.cross }}
+      security: ${{ steps.filter.outputs.security }}
+      sast: ${{ steps.filter.outputs.sast }}
       smoke: ${{ steps.filter.outputs.smoke }}
     steps:
       - uses: actions/checkout@v4
@@ -44,6 +46,17 @@ jobs:
               - 'shared/**'
               - 'tests/cross_service/**'
               - 'contracts/**'
+              - 'pyproject.toml'
+            security:
+              - 'services/**'
+              - 'gateway/**'
+              - 'shared/**'
+              - 'tests/security/**'
+              - 'tests/cross_service/**'
+              - 'pyproject.toml'
+            sast:
+              - 'services/**'
+              - 'gateway/**'
               - 'pyproject.toml'
             smoke:
               - 'services/**'
@@ -83,7 +96,7 @@ jobs:
           cache-dependency-path: pyproject.toml
       - run: python -m pip install --upgrade pip
       - run: python -m pip install ".[test]"
-      - run: python -m pytest services/auth/tests --cov=services/auth/auth_app --cov-report=term-missing --cov-report=xml:coverage-auth.xml --cov-report=html:htmlcov/auth --cov-fail-under=0 -v
+      - run: python -m pytest services/auth/tests -m "not security" --cov=services/auth/auth_app --cov-report=term-missing --cov-report=xml:coverage-auth.xml --cov-report=html:htmlcov/auth --cov-fail-under=0 -v
       - name: Publish auth coverage summary
         if: always()
         run: |
@@ -121,7 +134,7 @@ jobs:
           cache-dependency-path: pyproject.toml
       - run: python -m pip install --upgrade pip
       - run: python -m pip install ".[test]"
-      - run: python -m pytest services/tasks/tests --cov=services/tasks/task_app --cov-report=term-missing --cov-report=xml:coverage-tasks.xml --cov-report=html:htmlcov/tasks --cov-fail-under=0 -v
+      - run: python -m pytest services/tasks/tests -m "not security" --cov=services/tasks/task_app --cov-report=term-missing --cov-report=xml:coverage-tasks.xml --cov-report=html:htmlcov/tasks --cov-fail-under=0 -v
       - name: Publish tasks coverage summary
         if: always()
         run: |
@@ -159,7 +172,7 @@ jobs:
           cache-dependency-path: pyproject.toml
       - run: python -m pip install --upgrade pip
       - run: python -m pip install ".[test]"
-      - run: python -m pytest services/frontend/tests --cov=services/frontend/frontend_app --cov-report=term-missing --cov-report=xml:coverage-frontend.xml --cov-report=html:htmlcov/frontend --cov-fail-under=0 -v
+      - run: python -m pytest services/frontend/tests -m "not security" --cov=services/frontend/frontend_app --cov-report=term-missing --cov-report=xml:coverage-frontend.xml --cov-report=html:htmlcov/frontend --cov-fail-under=0 -v
       - name: Publish frontend coverage summary
         if: always()
         run: |
@@ -197,7 +210,7 @@ jobs:
           cache-dependency-path: pyproject.toml
       - run: python -m pip install --upgrade pip
       - run: python -m pip install ".[test]"
-      - run: python -m pytest gateway/tests --cov=gateway/gateway_app --cov-report=term-missing --cov-report=xml:coverage-gateway.xml --cov-report=html:htmlcov/gateway --cov-fail-under=0 -v
+      - run: python -m pytest gateway/tests -m "not security" --cov=gateway/gateway_app --cov-report=term-missing --cov-report=xml:coverage-gateway.xml --cov-report=html:htmlcov/gateway --cov-fail-under=0 -v
       - name: Publish gateway coverage summary
         if: always()
         run: |
@@ -235,7 +248,37 @@ jobs:
           cache-dependency-path: pyproject.toml
       - run: python -m pip install --upgrade pip
       - run: python -m pip install ".[test]"
-      - run: python -m pytest tests/cross_service -v
+      - run: python -m pytest tests/cross_service -m "not security" -v
+
+  security-tests:
+    needs: [lint, changes]
+    if: needs.changes.outputs.security == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: "pip"
+          cache-dependency-path: pyproject.toml
+      - run: python -m pip install --upgrade pip
+      - run: python -m pip install ".[test]"
+      - run: python -m pytest -m security -v
+
+  sast:
+    needs: [lint, changes]
+    if: needs.changes.outputs.sast == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: "pip"
+          cache-dependency-path: pyproject.toml
+      - run: python -m pip install --upgrade pip
+      - run: python -m pip install ".[security]"
+      - run: python -m bandit -r services gateway -c pyproject.toml
 
   smoke-tests:
     needs: [lint, changes]

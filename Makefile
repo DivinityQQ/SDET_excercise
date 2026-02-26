@@ -21,7 +21,7 @@ PERF_RUNTIME ?= 60s
 	test-tasks-unit test-tasks-integration test-tasks-contract test-tasks \
 	test-frontend-integration test-frontend-contract test-frontend \
 	test-gateway-unit test-gateway-integration test-gateway \
-	test-cross-service test-unit test-integration test-contract test-resilience \
+	test-cross-service test-security test-unit test-integration test-contract test-resilience sast \
 	test-auth-cov test-tasks-cov test-frontend-cov test-gateway-cov test-cov \
 	stack-up stack-down perf-stack-up perf-stack-down \
 	test-smoke test-e2e \
@@ -47,10 +47,12 @@ help: ## Show grouped Make targets.
 	@echo ""
 	@echo "Cross-cutting tests (no docker):"
 	@echo "  make test-cross-service"
+	@echo "  make test-security"
 	@echo "  make test-unit"
 	@echo "  make test-integration"
 	@echo "  make test-contract"
 	@echo "  make test-resilience"
+	@echo "  make sast"
 	@echo ""
 	@echo "Coverage (no docker):"
 	@echo "  make test-auth-cov"
@@ -98,7 +100,7 @@ test-auth-contract: ## Run auth contract tests.
 	$(PYTEST) services/auth/tests/contracts -v
 
 test-auth: ## Run all auth tests.
-	$(PYTEST) services/auth/tests -v
+	$(PYTEST) services/auth/tests -m "not security" -v
 
 test-tasks-unit: ## Run tasks unit tests.
 	$(PYTEST) services/tasks/tests/unit -v
@@ -110,7 +112,7 @@ test-tasks-contract: ## Run tasks contract tests.
 	$(PYTEST) services/tasks/tests/contracts -v
 
 test-tasks: ## Run all tasks tests.
-	$(PYTEST) services/tasks/tests -v
+	$(PYTEST) services/tasks/tests -m "not security" -v
 
 test-frontend-integration: ## Run frontend integration tests.
 	$(PYTEST) services/frontend/tests/integration -v
@@ -119,7 +121,7 @@ test-frontend-contract: ## Run frontend contract tests.
 	$(PYTEST) services/frontend/tests/contracts -v
 
 test-frontend: ## Run all frontend tests.
-	$(PYTEST) services/frontend/tests -v
+	$(PYTEST) services/frontend/tests -m "not security" -v
 
 test-gateway-unit: ## Run gateway unit tests.
 	$(PYTEST) gateway/tests/unit -v
@@ -128,24 +130,27 @@ test-gateway-integration: ## Run gateway integration tests.
 	$(PYTEST) gateway/tests/integration -v
 
 test-gateway: ## Run all gateway tests.
-	$(PYTEST) gateway/tests -v
+	$(PYTEST) gateway/tests -m "not security" -v
 
 # ---- Cross-cutting tests ----------------------------------------------------
 
 test-cross-service: ## Run cross-service tests (requires auth+tasks dependencies).
-	$(PYTEST) tests/cross_service -v
+	$(PYTEST) tests/cross_service -m "not security" -v
+
+test-security: ## Run all security-marked tests across the repository.
+	$(PYTEST) -m security -v
 
 test-unit: ## Run all unit tests across services and gateway.
-	$(PYTEST) services/auth/tests services/tasks/tests services/frontend/tests gateway/tests -m unit -v
+	$(PYTEST) services/auth/tests services/tasks/tests services/frontend/tests gateway/tests -m "unit and not security" -v
 
 test-integration: ## Run all integration tests across services and gateway.
-	$(PYTEST) services/auth/tests services/tasks/tests services/frontend/tests gateway/tests -m integration -v
+	$(PYTEST) services/auth/tests services/tasks/tests services/frontend/tests gateway/tests -m "integration and not security" -v
 
 test-contract: ## Run all contract tests across services.
 	$(PYTEST) services/auth/tests/contracts services/tasks/tests/contracts services/frontend/tests/contracts -v
 
 test-resilience: ## Run all resilience-marked tests.
-	$(PYTEST) services/tasks/tests gateway/tests tests/cross_service -m resilience -v
+	$(PYTEST) services/tasks/tests gateway/tests tests/cross_service -m "resilience and not security" -v
 
 # ---- Coverage targets -------------------------------------------------------
 
@@ -159,10 +164,13 @@ test-frontend-cov: ## Run frontend tests with coverage.
 	$(PYTEST) services/frontend/tests --cov=services/frontend/frontend_app --cov-report=term-missing --cov-report=html:htmlcov/frontend --cov-fail-under=0 -v
 
 test-gateway-cov: ## Run gateway tests with coverage.
-	$(PYTEST) gateway/tests --cov=gateway/gateway_app --cov-report=term-missing --cov-report=html:htmlcov/gateway --cov-fail-under=0 -v
+	$(PYTEST) gateway/tests -m "not security" --cov=gateway/gateway_app --cov-report=term-missing --cov-report=html:htmlcov/gateway --cov-fail-under=0 -v
 
 test-cov: ## Run all local tests with combined coverage and fail gate from pyproject.
-	$(PYTEST) services/auth/tests services/tasks/tests services/frontend/tests gateway/tests tests/cross_service --cov --cov-report=term-missing --cov-report=html --cov-report=xml:coverage.xml -v
+	$(PYTEST) services/auth/tests services/tasks/tests services/frontend/tests gateway/tests tests/cross_service -m "not security" --cov --cov-report=term-missing --cov-report=html --cov-report=xml:coverage.xml -v
+
+sast: ## Run static application security testing (Bandit) on source code.
+	$(PYTHON) -m bandit -r services gateway -c pyproject.toml
 
 # ---- Stack lifecycle (smoke/e2e) -------------------------------------------
 
@@ -234,6 +242,8 @@ test-all-local: ## Run all tests that do not require docker.
 	$(MAKE) --no-print-directory test-frontend
 	$(MAKE) --no-print-directory test-gateway
 	$(MAKE) --no-print-directory test-cross-service
+	$(MAKE) --no-print-directory test-security
+	$(MAKE) --no-print-directory sast
 
 test-all: ## Run all local, smoke, e2e, and performance checks.
 	$(MAKE) --no-print-directory test-all-local

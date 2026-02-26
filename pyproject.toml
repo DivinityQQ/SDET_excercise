@@ -36,6 +36,9 @@ perf = [
 lint = [
     "ruff>=0.1.14",
 ]
+security = [
+    "bandit>=1.7.10",
+]
 dev = [
     "pytest>=8.0.0",
     "pytest-cov>=6.0.0",
@@ -48,6 +51,7 @@ dev = [
     "pytest-playwright>=0.5.0",
     "locust==2.43.3",
     "ruff>=0.1.14",
+    "bandit>=1.7.10",
 ]
 
 [tool.setuptools]
@@ -75,6 +79,19 @@ fail_under = 65
 [tool.coverage.html]
 directory = "htmlcov"
 
+[tool.bandit]
+exclude_dirs = [
+    "services/auth/tests",
+    "services/tasks/tests",
+    "services/frontend/tests",
+    "gateway/tests",
+    "tests",
+]
+skips = [
+    # False positives in views.py where timeout is present via config variable.
+    "B113",
+]
+
 [tool.pytest.ini_options]
 pythonpath = [
     ".",
@@ -85,6 +102,7 @@ testpaths = [
     "services/tasks/tests",
     "gateway/tests",
     "tests/cross_service",
+    "tests/security",
     "tests/e2e",
     "tests/smoke",
 ]
@@ -104,6 +122,7 @@ markers = [
     "e2e: End-to-end browser tests using Playwright",
     "smoke: Critical path verification for deployment health",
     "cross_service: Tests spanning auth/task service boundaries",
+    "security: OWASP-focused adversarial and hardening tests",
     "isolation: Service isolation behavior tests",
     "resilience: Failure and timeout behavior tests",
 ]
