@@ -83,7 +83,30 @@ jobs:
           cache-dependency-path: pyproject.toml
       - run: python -m pip install --upgrade pip
       - run: python -m pip install ".[test]"
-      - run: python -m pytest services/auth/tests -v
+      - run: python -m pytest services/auth/tests --cov=services/auth/auth_app --cov-report=term-missing --cov-report=xml:coverage-auth.xml --cov-report=html:htmlcov/auth --cov-fail-under=0 -v
+      - name: Publish auth coverage summary
+        if: always()
+        run: |
+          {
+            echo "### Auth Coverage"
+            if [ -f .coverage ]; then
+              python -m coverage report --format=markdown --fail-under=0
+            else
+              echo "_No coverage data generated._"
+            fi
+            echo
+            echo "_HTML artifact: coverage-auth_"
+            echo
+          } >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-auth
+          path: |
+            coverage-auth.xml
+            htmlcov/auth/
+          retention-days: 14
+          if-no-files-found: ignore
 
   task-tests:
     needs: [lint, changes]
@@ -98,7 +121,30 @@ jobs:
           cache-dependency-path: pyproject.toml
       - run: python -m pip install --upgrade pip
       - run: python -m pip install ".[test]"
-      - run: python -m pytest services/tasks/tests -v
+      - run: python -m pytest services/tasks/tests --cov=services/tasks/task_app --cov-report=term-missing --cov-report=xml:coverage-tasks.xml --cov-report=html:htmlcov/tasks --cov-fail-under=0 -v
+      - name: Publish tasks coverage summary
+        if: always()
+        run: |
+          {
+            echo "### Tasks Coverage"
+            if [ -f .coverage ]; then
+              python -m coverage report --format=markdown --fail-under=0
+            else
+              echo "_No coverage data generated._"
+            fi
+            echo
+            echo "_HTML artifact: coverage-tasks_"
+            echo
+          } >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-tasks
+          path: |
+            coverage-tasks.xml
+            htmlcov/tasks/
+          retention-days: 14
+          if-no-files-found: ignore
 
   frontend-tests:
     needs: [lint, changes]
@@ -113,7 +159,30 @@ jobs:
           cache-dependency-path: pyproject.toml
       - run: python -m pip install --upgrade pip
       - run: python -m pip install ".[test]"
-      - run: python -m pytest services/frontend/tests -v
+      - run: python -m pytest services/frontend/tests --cov=services/frontend/frontend_app --cov-report=term-missing --cov-report=xml:coverage-frontend.xml --cov-report=html:htmlcov/frontend --cov-fail-under=0 -v
+      - name: Publish frontend coverage summary
+        if: always()
+        run: |
+          {
+            echo "### Frontend Coverage"
+            if [ -f .coverage ]; then
+              python -m coverage report --format=markdown --fail-under=0
+            else
+              echo "_No coverage data generated._"
+            fi
+            echo
+            echo "_HTML artifact: coverage-frontend_"
+            echo
+          } >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-frontend
+          path: |
+            coverage-frontend.xml
+            htmlcov/frontend/
+          retention-days: 14
+          if-no-files-found: ignore
 
   gateway-tests:
     needs: [lint, changes]
@@ -128,7 +197,30 @@ jobs:
           cache-dependency-path: pyproject.toml
       - run: python -m pip install --upgrade pip
       - run: python -m pip install ".[test]"
-      - run: python -m pytest gateway/tests -v
+      - run: python -m pytest gateway/tests --cov=gateway/gateway_app --cov-report=term-missing --cov-report=xml:coverage-gateway.xml --cov-report=html:htmlcov/gateway --cov-fail-under=0 -v
+      - name: Publish gateway coverage summary
+        if: always()
+        run: |
+          {
+            echo "### Gateway Coverage"
+            if [ -f .coverage ]; then
+              python -m coverage report --format=markdown --fail-under=0
+            else
+              echo "_No coverage data generated._"
+            fi
+            echo
+            echo "_HTML artifact: coverage-gateway_"
+            echo
+          } >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-gateway
+          path: |
+            coverage-gateway.xml
+            htmlcov/gateway/
+          retention-days: 14
+          if-no-files-found: ignore
 
   cross-service-tests:
     needs: [lint, changes]

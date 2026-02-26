@@ -550,19 +550,25 @@ def test_login_with_data_file():
 
 **Running coverage (this repo):**
 ```bash
-pytest --cov=app --cov-report=html
-# Opens reports/coverage/index.html
+# Combined local coverage (services + gateway + cross-service)
+make test-cov
+# Opens htmlcov/index.html
+
+# Per-service coverage (example: auth)
+make test-auth-cov
+# Opens htmlcov/auth/index.html
 ```
 
 **Example report:**
 ```
-Name                    Stmts   Miss  Cover
--------------------------------------------
-app/__init__.py            15      0   100%
-app/models.py              28      2    93%
-app/routes/api.py          67      5    93%
--------------------------------------------
-TOTAL                     110      7    94%
+Name                                             Stmts   Miss  Cover
+---------------------------------------------------------------------
+services/auth/auth_app/routes/api.py                82      5    94%
+services/tasks/task_app/routes/api.py              151     11    93%
+services/frontend/frontend_app/routes/views.py     378    250    34%
+gateway/gateway_app/routes.py                       73      4    95%
+---------------------------------------------------------------------
+TOTAL                                               928    287    69%
 ```
 
 **Why it matters:** Shows untested code, but 100% coverage doesn't guarantee bug-free code!

@@ -22,6 +22,7 @@ PERF_RUNTIME ?= 60s
 	test-frontend-integration test-frontend-contract test-frontend \
 	test-gateway-unit test-gateway-integration test-gateway \
 	test-cross-service test-unit test-integration test-contract test-resilience \
+	test-auth-cov test-tasks-cov test-frontend-cov test-gateway-cov test-cov \
 	stack-up stack-down perf-stack-up perf-stack-down \
 	test-smoke test-e2e \
 	test-perf-mixed test-perf-auth test-perf-crud test-perf \
@@ -50,6 +51,13 @@ help: ## Show grouped Make targets.
 	@echo "  make test-integration"
 	@echo "  make test-contract"
 	@echo "  make test-resilience"
+	@echo ""
+	@echo "Coverage (no docker):"
+	@echo "  make test-auth-cov"
+	@echo "  make test-tasks-cov"
+	@echo "  make test-frontend-cov"
+	@echo "  make test-gateway-cov"
+	@echo "  make test-cov"
 	@echo ""
 	@echo "Stack tests (docker):"
 	@echo "  make test-smoke"
@@ -138,6 +146,23 @@ test-contract: ## Run all contract tests across services.
 
 test-resilience: ## Run all resilience-marked tests.
 	$(PYTEST) services/tasks/tests gateway/tests tests/cross_service -m resilience -v
+
+# ---- Coverage targets -------------------------------------------------------
+
+test-auth-cov: ## Run auth tests with coverage.
+	$(PYTEST) services/auth/tests --cov=services/auth/auth_app --cov-report=term-missing --cov-report=html:htmlcov/auth --cov-fail-under=0 -v
+
+test-tasks-cov: ## Run tasks tests with coverage.
+	$(PYTEST) services/tasks/tests --cov=services/tasks/task_app --cov-report=term-missing --cov-report=html:htmlcov/tasks --cov-fail-under=0 -v
+
+test-frontend-cov: ## Run frontend tests with coverage.
+	$(PYTEST) services/frontend/tests --cov=services/frontend/frontend_app --cov-report=term-missing --cov-report=html:htmlcov/frontend --cov-fail-under=0 -v
+
+test-gateway-cov: ## Run gateway tests with coverage.
+	$(PYTEST) gateway/tests --cov=gateway/gateway_app --cov-report=term-missing --cov-report=html:htmlcov/gateway --cov-fail-under=0 -v
+
+test-cov: ## Run all local tests with combined coverage and fail gate from pyproject.
+	$(PYTEST) services/auth/tests services/tasks/tests services/frontend/tests gateway/tests tests/cross_service --cov --cov-report=term-missing --cov-report=html --cov-report=xml:coverage.xml -v
 
 # ---- Stack lifecycle (smoke/e2e) -------------------------------------------
 
