@@ -158,6 +158,7 @@ Use Make targets to run the right suite without remembering long commands:
 ```bash
 make help
 make test-all-local     # no docker
+make test-cov           # combined local coverage + gate from pyproject
 make test-smoke         # docker stack + smoke checks
 make test-e2e           # docker stack + browser e2e
 make test-perf          # docker stack + mixed/auth/crud perf scenarios
@@ -183,6 +184,26 @@ make test-auth-unit
 make test-tasks-integration
 make test-frontend-contract
 ```
+
+### Coverage
+
+```bash
+# Per-service coverage
+make test-auth-cov
+make test-tasks-cov
+make test-frontend-cov
+make test-gateway-cov
+
+# Combined coverage + XML report + fail gate
+make test-cov
+```
+
+Coverage HTML outputs:
+- `htmlcov/auth/index.html`
+- `htmlcov/tasks/index.html`
+- `htmlcov/frontend/index.html`
+- `htmlcov/gateway/index.html`
+- `htmlcov/index.html` (combined)
 
 ### Direct pytest/locust commands (optional)
 
@@ -290,10 +311,10 @@ Four GitHub Actions workflows in `.github/workflows/`:
 
 | Workflow | Trigger | What it does |
 |----------|---------|--------------|
-| `pr.yml` | Pull requests to main | Lint + per-service tests + cross-service + smoke (only for changed services via path-based detection) |
+| `pr.yml` | Pull requests to main | Lint + per-service tests (with per-service coverage XML artifacts) + cross-service + smoke (only for changed services via path-based detection) |
 | `main.yml` | Push to main | Build full stack, health checks, smoke tests, short mixed Locust perf gate |
 | `release.yml` | Tag push | Build/push images, staging smoke gate, then parallel staging e2e + staging perf gate, then production smoke |
-| `pr-nightly.yml` | Scheduled (nightly) | Full regression tests + nightly Locust perf runs (mixed + auth + crud) |
+| `pr-nightly.yml` | Scheduled (nightly) | Full regression tests in one combined coverage run (HTML + XML artifact, fail gate from pyproject) + nightly Locust perf runs (mixed + auth + crud) |
 
 PR checks use `dorny/paths-filter` so that changing files in `services/auth/` only triggers auth-tests and cross-service-tests, not the entire suite. The nightly run covers everything unconditionally as a safety net.
 
