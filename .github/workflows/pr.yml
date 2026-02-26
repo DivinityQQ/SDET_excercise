@@ -266,7 +266,7 @@ jobs:
       - run: python -m pytest -m security -v
 
   sast:
-    needs: [lint, changes]
+    needs: [changes]
     if: needs.changes.outputs.sast == 'true'
     runs-on: ubuntu-latest
     steps:
