@@ -19,6 +19,7 @@ dependencies = [
 [project.optional-dependencies]
 test = [
     "pytest>=8.0.0",
+    "pytest-cov>=6.0.0",
     "pytest-html>=4.1.1",
     "faker>=22.0.0",
     "pyyaml>=6.0.0",
@@ -37,6 +38,7 @@ lint = [
 ]
 dev = [
     "pytest>=8.0.0",
+    "pytest-cov>=6.0.0",
     "pytest-html>=4.1.1",
     "faker>=22.0.0",
     "pyyaml>=6.0.0",
@@ -50,6 +52,28 @@ dev = [
 
 [tool.setuptools]
 py-modules = []
+
+[tool.coverage.run]
+branch = true
+source = [
+    "services/auth/auth_app",
+    "services/tasks/task_app",
+    "services/frontend/frontend_app",
+    "gateway/gateway_app",
+]
+omit = [
+    "*/tests/*",
+    "*/conftest.py",
+    "*/wsgi.py",
+]
+
+[tool.coverage.report]
+show_missing = true
+skip_empty = true
+fail_under = 65
+
+[tool.coverage.html]
+directory = "htmlcov"
 
 [tool.pytest.ini_options]
 pythonpath = [
