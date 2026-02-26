@@ -1,3 +1,0 @@
--r requirements.txt
-PyJWT[crypto]>=2.8.0
-locust==2.43.3
