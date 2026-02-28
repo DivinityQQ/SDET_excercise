@@ -19,7 +19,7 @@ jobs:
       - run: python -m pip install ".[test]"
       - run: |
           python -m pytest services/auth/tests services/tasks/tests services/frontend/tests gateway/tests tests/cross_service \
-            --cov --cov-report=term-missing --cov-report=html --cov-report=xml:coverage.xml -v
+            -m "not security" --cov --cov-report=term-missing --cov-report=html --cov-report=xml:coverage.xml -v
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -29,6 +29,32 @@ jobs:
             htmlcov/
           retention-days: 14
           if-no-files-found: ignore
+
+  security-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: "pip"
+          cache-dependency-path: pyproject.toml
+      - run: python -m pip install --upgrade pip
+      - run: python -m pip install ".[test]"
+      - run: python -m pytest tests/security -v
+
+  sast:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: "pip"
+          cache-dependency-path: pyproject.toml
+      - run: python -m pip install --upgrade pip
+      - run: python -m pip install ".[security]"
+      - run: python -m bandit -r services gateway -c pyproject.toml
 
   nightly-ui:
     runs-on: ubuntu-latest
