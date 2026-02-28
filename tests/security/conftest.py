@@ -1,4 +1,18 @@
-"""Shared fixtures for the security test suite."""
+"""
+Shared fixtures for the security test suite.
+
+Provides session-scoped Flask application instances for the task and
+frontend services, function-scoped test clients with full database
+lifecycle management, and a factory fixture that mints unique JWT tokens
+for each test.  The function-scoped client fixtures guarantee that every
+test starts with a clean database, preventing cross-test pollution.
+
+Key SDET Concepts Demonstrated:
+- Session-scoped app creation for performance (one app per test run)
+- Function-scoped clients for per-test database isolation
+- Factory fixture pattern (``token_for_user``) for on-demand identity creation
+- Monotonic user-ID counter to avoid collisions across tests
+"""
 
 from __future__ import annotations
 
@@ -34,7 +48,11 @@ def frontend_service_app():
 
 @pytest.fixture(scope="function")
 def task_client(task_service_app):
-    """Provide isolated task-service test client + DB lifecycle per test."""
+    """Provide isolated task-service test client with per-test DB lifecycle.
+
+    Creates all tables before yielding the client and tears them down
+    after the test completes, ensuring full isolation between tests.
+    """
     with task_service_app.app_context():
         task_db.create_all()
     with task_service_app.test_client() as client:
@@ -53,9 +71,14 @@ def frontend_client(frontend_service_app):
 
 @pytest.fixture
 def token_for_user():
-    """Mint a valid RS256 token for a unique synthetic user identity."""
+    """Return a factory that mints a valid RS256 token for a unique user.
 
-    def _token_for_user() -> tuple[str, dict]:
+    Each call to the returned callable increments a monotonic counter so
+    that every test (and every user within a test) receives a distinct
+    ``user_id``, preventing cross-test identity collisions.
+    """
+
+    def _factory() -> tuple[str, dict]:
         user_id = next(_user_counter)
         username = f"security_user_{user_id}"
         token = create_test_token(
@@ -65,4 +88,4 @@ def token_for_user():
         )
         return token, {"id": user_id, "username": username}
 
-    return _token_for_user
+    return _factory

@@ -1,4 +1,16 @@
-"""Security tests for stored XSS-safe rendering in frontend templates."""
+"""
+Security tests for stored XSS-safe rendering in frontend templates.
+
+Injects classic XSS payloads (script tags, event-handler attributes) into
+task data via a monkeypatched API response and verifies that Jinja2's
+auto-escaping converts them to harmless HTML entities in the rendered
+output (OWASP A03 – Injection / A07 – Cross-Site Scripting).
+
+Key SDET Concepts Demonstrated:
+- Monkeypatching external HTTP calls to inject controlled malicious data
+- HTML entity verification for output-encoding correctness
+- Multi-vector XSS coverage (inline script, event-handler attribute)
+"""
 
 from __future__ import annotations
 
@@ -15,6 +27,8 @@ pytestmark = pytest.mark.security
 
 
 class _FakeResponse:
+    """Minimal stand-in for ``requests.Response`` used by monkeypatched calls."""
+
     def __init__(self, status_code: int, payload: dict):
         self.status_code = status_code
         self._payload = payload
@@ -24,6 +38,7 @@ class _FakeResponse:
 
 
 def _task_payload(*, task_id: int, title: str, description: str) -> dict:
+    """Build a realistic task API response dict with the given user-controlled fields."""
     return {
         "id": task_id,
         "user_id": 1,
@@ -40,6 +55,7 @@ def _task_payload(*, task_id: int, title: str, description: str) -> dict:
 
 def test_index_escapes_script_payloads(frontend_client, monkeypatch):
     """Task titles containing script tags must be HTML-escaped in index view."""
+    # Arrange — seed a session and prepare a malicious task title
     token = create_test_token(user_id=1, username="xss_user", private_key=TEST_PRIVATE_KEY)
     with frontend_client.session_transaction() as session:
         session["auth_token"] = token
@@ -58,8 +74,10 @@ def test_index_escapes_script_payloads(frontend_client, monkeypatch):
 
     monkeypatch.setattr(views_module.requests, "request", _fake_request)
 
+    # Act
     response = frontend_client.get("/")
 
+    # Assert — raw script tag must not appear; escaped entity must
     assert response.status_code == 200
     html = response.get_data(as_text=True)
     assert malicious_title not in html
@@ -68,6 +86,7 @@ def test_index_escapes_script_payloads(frontend_client, monkeypatch):
 
 def test_task_detail_escapes_event_handler_payloads(frontend_client, monkeypatch):
     """Task descriptions containing HTML event handlers must render escaped."""
+    # Arrange — seed a session and prepare an event-handler XSS vector
     token = create_test_token(user_id=1, username="xss_user", private_key=TEST_PRIVATE_KEY)
     with frontend_client.session_transaction() as session:
         session["auth_token"] = token
@@ -89,8 +108,10 @@ def test_task_detail_escapes_event_handler_payloads(frontend_client, monkeypatch
 
     monkeypatch.setattr(views_module.requests, "request", _fake_request)
 
+    # Act
     response = frontend_client.get("/tasks/1")
 
+    # Assert — raw img/onerror tag must not appear; escaped entity must
     assert response.status_code == 200
     html = response.get_data(as_text=True)
     assert malicious_description not in html
